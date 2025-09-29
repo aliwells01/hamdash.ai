@@ -1,0 +1,41 @@
+name: Capture DXView PNG
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # every 15 min
+  workflow_dispatch:
+    inputs:
+      grid:
+        description: 'Maidenhead grid (e.g., EM84ab)'
+        default: 'EM84ab'
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install Playwright
+        run: |
+          npm ci || npm i
+          npx playwright install --with-deps chromium
+      - name: Capture screenshot
+        env:
+          GRID: ${{ github.event.inputs.grid || 'EM84ab' }}
+        run: node scripts/screenshot.mjs
+      - name: Commit PNG
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dxview.png
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update dxview.png"
+            git push
+          fi
