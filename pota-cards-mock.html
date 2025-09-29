@@ -280,7 +280,7 @@ function render(){
             ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
             <span class="chip">Active ${when ? relTime(when) : ""}</span>
           </div>
-          <div class="right muted"><span class="chip">${fTxt} style="font-size: 200%;" </span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
+          <div class="right muted"><span class="chip">${fTxt} "style="font-size: 200%;" </span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
         </div>
         <!-- LINE 2 (optional, clamped to 2 lines total): park name / note -->
         ${ (pname(s) || note(s)) ? `
