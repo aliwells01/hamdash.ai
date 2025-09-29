@@ -1,13 +1,19 @@
 name: Capture DXView PNG
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'   # every 15 min
+  push:
+    branches: [ main ]
+    paths:
+      - .github/workflows/capture-dxview.yml
+      - scripts/screenshot.mjs
+      - package.json
   workflow_dispatch:
     inputs:
       grid:
         description: 'Maidenhead grid (e.g., EM84ab)'
         default: 'EM84ab'
+  schedule:
+    - cron: '*/30 * * * *'   # optional: every 30 min
 
 permissions:
   contents: write
@@ -18,16 +24,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - name: Install Playwright
+
+      - name: Install deps
         run: |
           npm ci || npm i
-          npx playwright install --with-deps chromium
+
+      - name: Install Playwright (browsers + system deps)
+        uses: microsoft/playwright-github-action@v1
+        with:
+          version: 1.48.2
+
       - name: Capture screenshot
         env:
           GRID: ${{ github.event.inputs.grid || 'EM84ab' }}
+          OUT: dxview.png
+          WIDTH: 1280
+          HEIGHT: 720
         run: node scripts/screenshot.mjs
+
+      - name: Upload artifact (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dxview.png
+          path: dxview.png
+
       - name: Commit PNG
         run: |
           git config user.name  "github-actions[bot]"
