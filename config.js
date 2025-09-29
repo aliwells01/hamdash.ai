@@ -73,8 +73,8 @@ var aIMG = [
     "https://www.timeanddate.com/scripts/sunmap.php?iso=now"
   ],
   [
-    "",
-    "https://www.hamqsl.com/solar101vhf.php"
+    "HF Map EM73ts",
+    "https://aliwells01.github.io/hamdash.ai//dxview.png"
   ],
   [
     "",
