@@ -1,0 +1,304 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>POTA Spots — Compact List View</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://api.pota.app">
+<style>
+  :root{ --bg:#0b0f14; --text:#e6edf3; --panel:#0f141b; --line:#1f2630; --muted:#9aa4b2; }
+  html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .top{position:sticky;top:0;z-index:10;background:#0f141b;border-bottom:1px solid var(--line);
+       display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.6rem .8rem}
+  .top strong{font-weight:600}
+  .ctrl{background:#0b0f14;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:.35rem .5rem}
+
+  /* --- LIST LAYOUT (one–two lines per item) --- */
+  .list{display:flex;flex-direction:column;gap:0;padding:.2rem}
+  .item{display:flex;flex-direction:column;border-bottom:1px solid var(--line);padding:.45rem .6rem;gap:.3rem}
+  .item:hover{background:#b21111}
+  .line{display:flex;align-items:center;gap:.5rem;min-width:0}
+  .line1{font-size:1rem;font-weight:600}
+  .line2{font-size:.82rem;color:var(--muted)}
+  .line.wrap{justify-content:space-between}
+
+  /* First line: dense chips on the left, time on the right */
+  .chips{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;min-width:0}
+  .chip{border-radius:999px;padding:.05rem .45rem;font-size:.78rem;border:1px solid #00000026;white-space:nowrap}
+  .muted{color:black}
+  .right{margin-left:auto;display:flex;align-items:center;gap:.5rem;flex:none}
+  .hunt{display:flex;align-items:center;gap:.35rem;font-size:.82rem}
+  .hunt input{transform:scale(1.05)}
+
+  /* Truncation utilities */
+  .truncate{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .clamp2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+
+  /* Band coloring: left border + strong full-row background */
+  .item{border-left:4px solid transparent}
+  .b-160{border-left-color:#8e796d;background:rgba(215,195,182,0.60)}
+  .b-80 {border-left-color:#8f8377;background:rgba(216,202,189,0.60)}
+  .b-60 {border-left-color:#947e70;background:rgba(225,208,196,0.60)}
+  .b-40 {border-left-color:#1e4056;background:rgba(192,217,247,0.60)}
+  .b-30 {border-left-color:#2a5235;background:rgba(197,230,204,0.60)}
+  .b-20 {border-left-color:#5b3a05;background:rgba(255,209,166,0.68)}
+  .b-17 {border-left-color:#3f2f55;background:rgba(220,198,238,0.68)}
+  .b-15 {border-left-color:#2f356b;background:rgba(203,210,255,0.68)}
+  .b-12 {border-left-color:#1e4e54;background:rgba(194,234,240,0.68)}
+  .b-10 {border-left-color:#5b320e;background:rgba(255,210,163,0.68)}
+  .b-6  {border-left-color:#2a5852;background:rgba(197,232,227,0.68)}
+  .b-2  {border-left-color:#3b5a28;background:rgba(214,235,194,0.68)}
+
+  .err{background:#2a0000;border:1px solid #5a2020;color:#ffb4b4;border-radius:10px;padding:.5rem .6rem;margin:.5rem .8rem}
+  a.link{color:inherit;text-decoration:none;border-bottom:1px dotted #00000040}
+
+  /* Compact at all widths; no CSS grid */
+</style>
+
+<div class="top">
+  <strong>POTA Spots</strong>
+  <label>Band:
+    <select id="band" class="ctrl">
+      <option value="">All</option>
+      <option>160m</option><option>80m</option><option>60m</option><option>40m</option>
+      <option>30m</option><option>20m</option><option>17m</option><option>15m</option>
+      <option>12m</option><option>10m</option><option>6m</option><option>2m</option>
+    </select>
+  </label>
+  <label>Mode:
+    <select id="mode" class="ctrl">
+      <option value="">All</option>
+      <option>SSB</option><option>CW</option><option>FT8</option><option>FT4</option>
+      <option>FM</option><option>AM</option><option>DIGI</option>
+    </select>
+  </label>
+  <label>Sort:
+    <select id="sort" class="ctrl">
+      <option value="time_desc">Newest</option>
+      <option value="time_asc">Oldest</option>
+      <option value="freq_asc">Freq ↑</option>
+      <option value="freq_desc">Freq ↓</option>
+      <option value="dist_asc">Dist from GA ↑</option>
+      <option value="dist_desc">Dist from GA ↓</option>
+      <option value="call_asc">Call A→Z</option>
+      <option value="mode_asc">Mode</option>
+      <option value="band_asc">Band (LF→HF)</option>
+      <option value="band_desc">Band (HF→LF)</option>
+    </select>
+  </label>
+  <label>Then by:
+    <select id="sort2" class="ctrl">
+      <option value="none">(none)</option>
+      <option value="time_desc">Newest</option>
+      <option value="time_asc">Oldest</option>
+      <option value="freq_asc">Freq ↑</option>
+      <option value="freq_desc">Freq ↓</option>
+      <option value="dist_asc">Dist from GA ↑</option>
+      <option value="dist_desc">Dist from GA ↓</option>
+      <option value="call_asc">Call A→Z</option>
+      <option value="mode_asc">Mode</option>
+      <option value="band_asc">Band (LF→HF)</option>
+      <option value="band_desc">Band (HF→LF)</option>
+    </select>
+  </label>
+  <label>Search: <input id="q" class="ctrl" placeholder="Call, park, comment"></label>
+  <label style="display:flex;align-items:center;gap:.35rem"><input type="checkbox" id="hideHunted"> Hunted</label>
+  <span id="status" class="muted">loading…</span>
+  <button id="refresh" class="ctrl" style="margin-left:auto;cursor:pointer">Refresh</button>
+</div>
+
+<div id="error" class="err" style="display:none"></div>
+<div id="list" class="list" role="list"></div>
+
+<script>
+/* Data source with lat/lon in each spot */
+const API = "https://api.pota.app/spot/activator"; // includes latitude & longitude
+
+/* Georgia centroid (Twiggs County marker) */
+const GA_LAT = 32.646;  // 32°38′46″ N
+const GA_LON = -83.432; // 83°25′54″ W
+
+const $ = s => document.querySelector(s);
+const list = $("#list"), statusEl = $("#status"), errBox = $("#error");
+const bandSel = $("#band"), modeSel = $("#mode"), sortSel = $("#sort"), sortSel2 = $("#sort2"), qInput = $("#q"), hideChk = $("#hideHunted");
+$("#refresh").onclick = () => load(true);
+
+const t = s => s.spotTime || s.time || s.activatorLastSpotTime || s.createdAt || s.timestamp;
+const hunted = s => Boolean(s.hunted ?? s.worked ?? s.huntedByMe ?? s.workedByUser ?? false);
+const call = s => s.activator || s.call || s.callsign || "";
+const park = s => s.reference || s.park || s.parkId || "";
+const pname= s => s.name || s.parkName || s.entityName || "";
+const freq = s => s.frequency || s.freq || "";
+const mode = s => s.mode || "";
+const note = s => s.comments || s.activatorLastComments || s.comment || "";
+const lat  = s => (s.latitude!=null)? Number(s.latitude) : null;
+const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
+
+function toKhz(x){
+  const n = Number(x);
+  if(!isFinite(n) || n<=0) return NaN;
+  if (n >= 1e6) return n/1e3;  // Hz -> kHz
+  if (n > 1000) return n;      // kHz
+  if (n > 1) return n*1000;    // MHz -> kHz
+  return NaN;
+}
+function toBand(x){
+  const khz = toKhz(x);
+  if (!isFinite(khz)) return "";
+  if (khz>1800 && khz<2000) return "160m";
+  if (khz>3500 && khz<4000) return "80m";
+  if (khz>5330 && khz<5407) return "60m";
+  if (khz>7000 && khz<7300) return "40m";
+  if (khz>10100 && khz<10150) return "30m";
+  if (khz>14000 && khz<14350) return "20m";
+  if (khz>18068 && khz<18168) return "17m";
+  if (khz>21000 && khz<21450) return "15m";
+  if (khz>24890 && khz<24990) return "12m";
+  if (khz>28000 && khz<29700) return "10m";
+  if (khz>50000 && khz<54000) return "6m";
+  if (khz>144000 && khz<148000) return "2m";
+  return "";
+}
+const bandClass = b => b ? ("b-"+b.replace("m","")) : "";
+function bandRank(b){
+  // LF (160m) lowest khz → HF (2m) highest
+  const order = ["160m","80m","60m","40m","30m","20m","17m","15m","12m","10m","6m","2m"];
+  const i = order.indexOf(b);
+  return i === -1 ? 999 : i;
+}
+function fmtMHz(x){
+  const khz = toKhz(x);
+  if (!isFinite(khz)) return "";
+  return (khz/1000).toFixed(3) + " MHz";
+}
+function relTime(d){
+  const minutes = Math.max(1, Math.round((Date.now() - d.getTime()) / 60000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function haversineMiles(lat1, lon1, lat2, lon2){
+  const R = 3958.7613; // miles
+  const toRad = d => d*Math.PI/180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function getDistanceMi(s){
+  const la = lat(s), lo = lon(s);
+  if (!isFinite(la) || !isFinite(lo)) return Infinity; // if missing, push to end
+  return haversineMiles(GA_LAT, GA_LON, la, lo);
+}
+
+const STORE_KEY = "pota_hunted_v1";
+let huntedStore = (function(){ try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(_) { return {}; } })();
+function saveStore(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(huntedStore)); } catch(_){} }
+function makeKey(s){ const ts = t(s) ? String(new Date(t(s)).getTime()) : ""; const f = toKhz(freq(s)); const c = call(s)||""; const p = park(s)||""; return [c,p,Math.round(f||0),ts].join("|"); }
+function isHuntedByYou(keyOrSpot){ if (typeof keyOrSpot === "string") return huntedStore[keyOrSpot] === 1; const k = makeKey(keyOrSpot); return huntedStore[k] === 1; }
+function setHunted(key, val){ if (val) huntedStore[key]=1; else delete huntedStore[key]; saveStore(); }
+
+/* Sorting helpers */
+const cmp = {
+  time_desc:(a,b)=> new Date(t(b))-new Date(t(a)),
+  time_asc :(a,b)=> new Date(t(a))-new Date(t(b)),
+  freq_asc :(a,b)=> (toKhz(freq(a))||Infinity) - (toKhz(freq(b))||Infinity),
+  freq_desc:(a,b)=> (toKhz(freq(b))||-Infinity) - (toKhz(freq(a))||-Infinity),
+  dist_asc :(a,b)=> getDistanceMi(a) - getDistanceMi(b),
+  dist_desc:(a,b)=> getDistanceMi(b) - getDistanceMi(a),
+  call_asc :(a,b)=> call(a).localeCompare(call(b)),
+  mode_asc :(a,b)=> mode(a).localeCompare(mode(b)),
+  band_asc :(a,b)=> bandRank(toBand(freq(a))) - bandRank(toBand(freq(b))),
+  band_desc:(a,b)=> bandRank(toBand(freq(b))) - bandRank(toBand(freq(a))),
+};
+
+let all = [];
+
+async function load(manual=false){
+  try{
+    errBox.style.display="none";
+    statusEl.textContent = manual ? "refreshing…" : "loading…";
+    const ctl = new AbortController();
+    const timer = setTimeout(()=>ctl.abort(), 8000);
+    const r = await fetch(API, {cache:"no-store", signal: ctl.signal});
+    clearTimeout(timer);
+    if(!r.ok) throw new Error(r.status+" "+r.statusText);
+    all = await r.json();
+    render();
+    statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${all.length} spots`;
+  }catch(e){
+    statusEl.textContent = "error";
+    errBox.textContent = "Fetch failed: "+e.message+" (try another browser profile or disable blockers)";
+    errBox.style.display = "";
+    console.error(e);
+  }
+}
+
+function render(){
+  const wantBand = bandSel.value;
+  const wantMode = modeSel.value;
+  const q = qInput.value.trim().toLowerCase();
+  const sorter1 = cmp[sortSel.value] || cmp.time_desc;
+  const sorter2 = (sortSel2 && sortSel2.value !== 'none') ? (cmp[sortSel2.value] || null) : null;
+
+  const items = all.slice()
+    .filter(s=>{
+      const b = toBand(freq(s));
+      if (wantBand && b!==wantBand) return false;
+      if (wantMode && mode(s)!==wantMode) return false;
+      if (hideChk && hideChk.checked && isHuntedByYou(makeKey(s))) return false;
+      if (!q) return true;
+      const hay = [call(s), park(s), pname(s), note(s), mode(s)].join(" ").toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b)=>{
+      const r1 = sorter1(a,b);
+      if (r1 !== 0) return r1;
+      return sorter2 ? sorter2(a,b) : 0;
+    })
+    .slice(0, 120);
+
+  list.innerHTML = items.map(s=>{
+    const when = t(s) ? new Date(t(s)) : null; const key = makeKey(s); const huntedByMe = isHuntedByYou(key);
+    const b = toBand(freq(s));
+    const fTxt = fmtMHz(freq(s));
+    const p = park(s);
+    const parkLink = p ? `https://pota.app/#/park/${encodeURIComponent(p)}` : null;
+    const callLink = call(s) ? `https://www.qrz.com/lookup/${encodeURIComponent(call(s))}` : null;
+    const dist = getDistanceMi(s);
+    const distTxt = isFinite(dist) ? `${Math.round(dist)} mi` : "";
+
+    return `
+      <article class="item ${b?bandClass(b):""}" role="listitem">
+        <!-- LINE 1: dense chips (one line, truncates) -->
+        <div class="line line1 wrap">
+          <div class="chips truncate">
+            ${b ? `<span class="chip">${b}</span>` : ``}
+            ${mode(s) ? `<span class="chip">${mode(s)}</span>` : ``}
+            <span class="chip">Active ${when ? relTime(when) : ""}</span>
+            ${call(s) ? `<a class="link chip" href="${callLink||'#'}" target="_blank" rel="noreferrer">${call(s)}</a>` : ``}
+            ${p ? (parkLink ? `<a class="link chip" href="${parkLink}" target="_blank" rel="noreferrer">${p}</a>` : `<span class="chip">${p}</span>`) : ``}
+            ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
+            <span class="chip">Active ${when ? relTime(when) : ""}</span>
+          </div>
+          <div class="right muted"><span class="chip">${fTxt}</span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
+        </div>
+        <!-- LINE 2 (optional, clamped to 2 lines total): park name / note -->
+        ${ (pname(s) || note(s)) ? `
+          <div class="line line2">
+            <div class="clamp2 muted">${[pname(s), note(s)].filter(Boolean).join(" — ")}</div>
+          </div>` : ``}
+      </article>`;
+  }).join("");
+
+  if (!items.length) {
+    list.innerHTML = `<div class="muted" style="padding:.8rem">No spots match your filters.</div>`;
+  }
+}
+
+bandSel.onchange = modeSel.onchange = sortSel.onchange = (sortSel2 ? (e=>render(e)) : (e=>render(e))); 
+qInput.oninput = render;
+if (hideChk) hideChk.onchange = render;
+list.addEventListener('change', (e)=>{ const el = e.target; if (el && el.classList && el.classList.contains('huntbox')) { const k = el.dataset.key; setHunted(k, el.checked); if (hideChk && hideChk.checked) render(); }});
+load();
+setInterval(load, 60_000);
+</script>
