@@ -274,13 +274,13 @@ function render(){
           <div class="chips truncate">
             ${b ? `<span class="chip">${b}</span>` : ``}
             ${mode(s) ? `<span class="chip">${mode(s)}</span>` : ``}
-            <span class="chip">Active ${when ? relTime(when) : ""}</span>
+            
             ${call(s) ? `<a class="link chip" href="${callLink||'#'}" target="_blank" rel="noreferrer">${call(s)}</a>` : ``}
             ${p ? (parkLink ? `<a class="link chip" href="${parkLink}" target="_blank" rel="noreferrer">${p}</a>` : `<span class="chip">${p}</span>`) : ``}
             ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
             <span class="chip">Active ${when ? relTime(when) : ""}</span>
           </div>
-          <div class="right muted"><span class="chip">${fTxt}</span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
+          <div class="right muted"><span class="chip">${fTxt} style="font-size: 200%;" </span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
         </div>
         <!-- LINE 2 (optional, clamped to 2 lines total): park name / note -->
         ${ (pname(s) || note(s)) ? `
