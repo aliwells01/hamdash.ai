@@ -13,8 +13,8 @@ var layout_rows = 3;
 var aURL = [
   [
     "#2196f3",
-    "PoTA",
-    "file:///Users/aw/Downloads/pota-cards-mock.html",
+    "MyPoTA",
+    "https://aliwells01.github.io/hamdash.ai/pota-cards-mock.html",
     null,
     "L"
   ],
