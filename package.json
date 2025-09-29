@@ -1,0 +1,11 @@
+{
+  "name": "dxview-capture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node scripts/screenshot.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2"
+  }
+}
