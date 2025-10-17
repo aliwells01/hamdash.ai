@@ -274,13 +274,13 @@ function render(){
           <div class="chips truncate">
             ${b ? `<span class="chip">${b}</span>` : ``}
             ${mode(s) ? `<span class="chip">${mode(s)}</span>` : ``}
-            
+            <span class="chip">Active ${when ? relTime(when) : ""}</span>
             ${call(s) ? `<a class="link chip" href="${callLink||'#'}" target="_blank" rel="noreferrer">${call(s)}</a>` : ``}
             ${p ? (parkLink ? `<a class="link chip" href="${parkLink}" target="_blank" rel="noreferrer">${p}</a>` : `<span class="chip">${p}</span>`) : ``}
             ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
             <span class="chip">Active ${when ? relTime(when) : ""}</span>
           </div>
-          <div class="right muted"><span class="chip" style="font-size: 150%;">${fTxt}</span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
+          <div class="right muted"><span class="chip">${fTxt}</span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
         </div>
         <!-- LINE 2 (optional, clamped to 2 lines total): park name / note -->
         ${ (pname(s) || note(s)) ? `
@@ -298,7 +298,39 @@ function render(){
 bandSel.onchange = modeSel.onchange = sortSel.onchange = (sortSel2 ? (e=>render(e)) : (e=>render(e))); 
 qInput.oninput = render;
 if (hideChk) hideChk.onchange = render;
-list.addEventListener('change', (e)=>{ const el = e.target; if (el && el.classList && el.classList.contains('huntbox')) { const k = el.dataset.key; setHunted(k, el.checked); if (hideChk && hideChk.checked) render(); }});
+
+list.addEventListener('change', (e)=>{ 
+  const el = e.target; 
+  if (el && el.classList && el.classList.contains('huntbox')) {
+    const k = el.dataset.key;
+    setHunted(k, el.checked);
+    if (hideChk && hideChk.checked) render();
+
+    if (!el.checked) return;  // Only send on check (not uncheck)
+
+    // Find the matching spot
+    const spot = all.find(s => makeKey(s) === k);
+    if (!spot) return;
+
+    // Compose message
+    const msg = {
+      type: 'pota:hunted',
+      data: {
+        callsign: call(spot) || '',
+        freq_mhz: String(toKhz(freq(spot)) / 1000),
+        mode: mode(spot) || '',
+        band: toBand(freq(spot)) || '',
+        park: park(spot) || ''
+      }
+    };
+
+    console.log("📡 Sending to parent:", msg);
+    window.parent.postMessage(msg, '*');
+  }
+});
+
+
+
 load();
 setInterval(load, 60_000);
 </script>
