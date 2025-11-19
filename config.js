@@ -40,10 +40,10 @@ var aURL = [
     "L"
   ],
   [
-    "",
+    "#000000",
     "POTA Map",
+    "https://potamap.us/",
     null,
-    "",
     ""
   ]
 ];
