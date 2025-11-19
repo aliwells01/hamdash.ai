@@ -38,6 +38,13 @@ var aURL = [
     "http://10.0.0.119:8081/live.html",
     null,
     "L"
+  ],
+  [
+    "",
+    "POTA Map",
+    null,
+    "",
+    ""
   ]
 ];
 
