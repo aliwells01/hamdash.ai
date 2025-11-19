@@ -28,7 +28,7 @@ var aURL = [
   [
     "#8d6f02",
     "HF Real Time",
-    "https://potamap.us/",
+    "https://hf.dxview.org/",
     null,
     "L"
   ],
@@ -40,11 +40,11 @@ var aURL = [
     "L"
   ],
   [
-    "#8d6f01",
+    "",
     "POTA Map",
-    "https://potamap.us",
     null,
-    "L"
+    "",
+    ""
   ]
 ];
 
