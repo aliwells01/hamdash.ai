@@ -45,7 +45,7 @@ var aURL = [
     "https://potamap.us/",
     null,
     ""
-  ]
+  ],
 ];
 
 // Feed items
