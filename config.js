@@ -33,14 +33,14 @@ var aURL = [
     "L"
   ],
   [
-    "#000000",
+    "#ff9100",
     "HAMCLOCK",
     "http://10.0.0.119:8081/live.html",
     null,
     "L"
   ],
   [
-    "#000000",
+    "#2196f3",
     "POTA Map",
     "https://potamap.us/",
     null,
