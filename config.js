@@ -22,7 +22,7 @@ var aURL = [
     "#058019",
     "WRL",
     "https://app.worldradioleague.com/login",
-    1,
+    null,
     "L"
   ],
   [
