@@ -3,7 +3,7 @@ var disableSetup = false; // Manually set to true to disable setup page menu opt
 var topBarCenterText = "W5ALI";
 
 // Grid layout desired
-var layout_cols = 3;
+var layout_cols = 2;
 var layout_rows = 3;
 
 // Menu items
