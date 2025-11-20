@@ -46,6 +46,13 @@ var aURL = [
     null,
     ""
   ],
+   [
+    "#2706f3",
+    "VOCAP",
+    "https://www.voacap.com/hf/#",
+    null,
+    ""
+  ],
 ];
 
 // Feed items
