@@ -79,18 +79,7 @@ var aIMG = [
     "Greyline",
     "https://www.timeanddate.com/scripts/sunmap.php?iso=now"
   ],
-  [
-    "HF Map EM73ts",
-    "https://aliwells01.github.io/hamdash.ai//dxview.png"
-  ],
-  [
-    "",
-    "https://prop.kc2g.com/renders/current/fof2-normal-now.svg"
-  ],
-  [
-    "",
-    "https://www.dxmaps.com/"
-  ],
+ 
   [
     "",
     ""
