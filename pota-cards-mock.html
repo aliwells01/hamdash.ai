@@ -23,7 +23,8 @@
   /* First line: dense chips on the left, time on the right */
   .chips{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;min-width:0}
   .chip{border-radius:999px;padding:.05rem .45rem;font-size:.78rem;border:1px solid #00000026;white-space:nowrap}
-  .muted{color:black}
+  .chipcs{border-radius:999px;padding:.05rem .45rem;font-size:.98rem;border:1px solid #00000026;white-space:nowrap;background:rgba(0, 0, 0, 0.6)}
+ 
   .right{margin-left:auto;display:flex;align-items:center;gap:.5rem;flex:none}
   .hunt{display:flex;align-items:center;gap:.35rem;font-size:.82rem}
   .hunt input{transform:scale(1.05)}
@@ -51,6 +52,39 @@
   a.link{color:inherit;text-decoration:none;border-bottom:1px dotted #00000040}
 
   /* Compact at all widths; no CSS grid */
+
+
+/* ========= CUSTOM TOOLTIP STYLING ========= */
+.tooltip-box {
+  position: absolute;
+  z-index: 9999;
+  background: rgba(20, 24, 32, 0.95);
+  padding: 10px 14px;
+  color: #dfe7ff;
+  font-size: 12px;
+  line-height: 1.35;
+  border-radius: 10px;        /* nice rounded corners */
+  border: 1px solid #4a5060;
+  max-width: 260px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0px 4px 16px rgba(0,0,0,0.35);
+}
+
+.spot-hover-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.spot-hover-wrapper:hover .tooltip-box {
+  opacity: 1;
+  transform: translateY(10px);
+  transform: translateX(100px);
+}
+
+
 </style>
 
 <div class="top">
@@ -58,6 +92,7 @@
   <label>Band:
     <select id="band" class="ctrl">
       <option value="">All</option>
+       
       <option>160m</option><option>80m</option><option>60m</option><option>40m</option>
       <option>30m</option><option>20m</option><option>17m</option><option>15m</option>
       <option>12m</option><option>10m</option><option>6m</option><option>2m</option>
@@ -66,7 +101,8 @@
   <label>Mode:
     <select id="mode" class="ctrl">
       <option value="">All</option>
-      <option>SSB</option><option>CW</option><option>FT8</option><option>FT4</option>
+       <option value="SSB" selected>SSB</option>
+      <option>CW</option><option>FT8</option><option>FT4</option>
       <option>FM</option><option>AM</option><option>DIGI</option>
     </select>
   </label>
@@ -75,7 +111,7 @@
       <option value="time_desc">Newest</option>
       <option value="time_asc">Oldest</option>
       <option value="freq_asc">Freq ↑</option>
-      <option value="freq_desc">Freq ↓</option>
+      <option value="freq_desc" selected>Freq ↓</option>
       <option value="dist_asc">Dist from GA ↑</option>
       <option value="dist_desc">Dist from GA ↓</option>
       <option value="call_asc">Call A→Z</option>
@@ -84,7 +120,7 @@
       <option value="band_desc">Band (HF→LF)</option>
     </select>
   </label>
-  <label>Then by:
+  <!-- <label>Then by:
     <select id="sort2" class="ctrl">
       <option value="none">(none)</option>
       <option value="time_desc">Newest</option>
@@ -98,7 +134,7 @@
       <option value="band_asc">Band (LF→HF)</option>
       <option value="band_desc">Band (HF→LF)</option>
     </select>
-  </label>
+  </label> -->
   <label>Search: <input id="q" class="ctrl" placeholder="Call, park, comment"></label>
   <label style="display:flex;align-items:center;gap:.35rem"><input type="checkbox" id="hideHunted"> Hunted</label>
   <span id="status" class="muted">loading…</span>
@@ -131,6 +167,7 @@ const mode = s => s.mode || "";
 const note = s => s.comments || s.activatorLastComments || s.comment || "";
 const lat  = s => (s.latitude!=null)? Number(s.latitude) : null;
 const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
+const pstate = s => s.locationDesc || "";
 
 function toKhz(x){
   const n = Number(x);
@@ -169,13 +206,26 @@ function fmtMHz(x){
   if (!isFinite(khz)) return "";
   return (khz/1000).toFixed(3) + " MHz";
 }
-function relTime(d){
-  const minutes = Math.max(1, Math.round((Date.now() - d.getTime()) / 60000));
+
+
+function relTime(d) {
+  if (!d) return "";
+
+  // ALWAYS convert to UTC
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const minutes = Math.floor(diffMs / 60000);
+
+  if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
+
+  const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
+
+
   return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
 
 function haversineMiles(lat1, lon1, lat2, lon2){
   const R = 3958.7613; // miles
@@ -193,22 +243,28 @@ function getDistanceMi(s){
 const STORE_KEY = "pota_hunted_v1";
 let huntedStore = (function(){ try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(_) { return {}; } })();
 function saveStore(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(huntedStore)); } catch(_){} }
-function makeKey(s){ const ts = t(s) ? String(new Date(t(s)).getTime()) : ""; const f = toKhz(freq(s)); const c = call(s)||""; const p = park(s)||""; return [c,p,Math.round(f||0),ts].join("|"); }
+function makeKey(s){ const ts = t(s) ? String(new Date(t(s)).getTime()) : ""; const f = toKhz(freq(s)); const c = call(s)||""; const st = pstate(s)||""; const p = park(s)||""; return [c,p,Math.round(f||0),ts].join("|"); }
 function isHuntedByYou(keyOrSpot){ if (typeof keyOrSpot === "string") return huntedStore[keyOrSpot] === 1; const k = makeKey(keyOrSpot); return huntedStore[k] === 1; }
 function setHunted(key, val){ if (val) huntedStore[key]=1; else delete huntedStore[key]; saveStore(); }
 
 /* Sorting helpers */
+function normDate(s) {
+  let ts = s.spotTime || s.time || s.activatorLastSpotTime || s.createdAt || s.timestamp;
+  if (!ts) return 0;
+  ts = String(ts);
+  if (!/[Zz]|[+-]\d\d/.test(ts)) ts += "Z";   // append UTC if missing
+  return new Date(ts);
+}
+
 const cmp = {
-  time_desc:(a,b)=> new Date(t(b))-new Date(t(a)),
-  time_asc :(a,b)=> new Date(t(a))-new Date(t(b)),
-  freq_asc :(a,b)=> (toKhz(freq(a))||Infinity) - (toKhz(freq(b))||Infinity),
-  freq_desc:(a,b)=> (toKhz(freq(b))||-Infinity) - (toKhz(freq(a))||-Infinity),
-  dist_asc :(a,b)=> getDistanceMi(a) - getDistanceMi(b),
-  dist_desc:(a,b)=> getDistanceMi(b) - getDistanceMi(a),
-  call_asc :(a,b)=> call(a).localeCompare(call(b)),
-  mode_asc :(a,b)=> mode(a).localeCompare(mode(b)),
-  band_asc :(a,b)=> bandRank(toBand(freq(a))) - bandRank(toBand(freq(b))),
-  band_desc:(a,b)=> bandRank(toBand(freq(b))) - bandRank(toBand(freq(a))),
+  time_desc:(a,b)=> normDate(b)-normDate(a),
+  time_asc:(a,b)=> normDate(a)-normDate(b),
+  freq_asc:(a,b)=> freq(a)-freq(b),
+  freq_desc:(a,b)=> freq(b)-freq(a),
+  call_asc:(a,b)=> call(a).localeCompare(call(b)),
+  call_desc:(a,b)=> call(b).localeCompare(call(a)),
+  dist_asc:(a,b)=> getDistanceMi(a)-getDistanceMi(b),
+  dist_desc:(a,b)=> getDistanceMi(b)-getDistanceMi(a),
 };
 
 let all = [];
@@ -223,6 +279,20 @@ async function load(manual=false){
     clearTimeout(timer);
     if(!r.ok) throw new Error(r.status+" "+r.statusText);
     all = await r.json();
+
+/* // 🔥 DEBUG: Log first 5 records raw:
+console.log("POTA RAW SPOTS (first 5):", all.slice(0,5));
+all.slice(0,5).forEach((s,i) => {
+    console.log(
+      `Spot ${i}:`,
+      "spotTime =", s.spotTime,
+      "time =", s.time,
+      "activatorLastSpotTime =", s.activatorLastSpotTime,
+      "createdAt =", s.createdAt,
+      "timestamp =", s.timestamp
+    );
+}); */
+
     render();
     statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${all.length} spots`;
   }catch(e){
@@ -237,63 +307,119 @@ function render(){
   const wantBand = bandSel.value;
   const wantMode = modeSel.value;
   const q = qInput.value.trim().toLowerCase();
-  const sorter1 = cmp[sortSel.value] || cmp.time_desc;
+  // Use correct timestamp-based time_desc when sorting by time
+  let sorter1 = cmp[sortSel.value] || ((a,b)=> new Date(t(b)) - new Date(t(a)));
   const sorter2 = (sortSel2 && sortSel2.value !== 'none') ? (cmp[sortSel2.value] || null) : null;
 
-  const items = all.slice()
-    .filter(s=>{
-      const b = toBand(freq(s));
-      if (wantBand && b!==wantBand) return false;
-      if (wantMode && mode(s)!==wantMode) return false;
-      if (hideChk && hideChk.checked && isHuntedByYou(makeKey(s))) return false;
-      if (!q) return true;
-      const hay = [call(s), park(s), pname(s), note(s), mode(s)].join(" ").toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a,b)=>{
-      const r1 = sorter1(a,b);
-      if (r1 !== 0) return r1;
-      return sorter2 ? sorter2(a,b) : 0;
-    })
-    .slice(0, 120);
+  
+
+  
+
+items = all.slice()
+  .filter(s => {
+    const b = toBand(freq(s));
+    if (wantBand && b !== wantBand) return false;
+    if (wantMode && mode(s) !== wantMode) return false;
+    if (hideChk && hideChk.checked && isHuntedByYou(makeKey(s))) return false;
+    if (!q) return true;
+    const hay = [call(s), park(s), pstate(s), pname(s), note(s), mode(s)].join(" ").toLowerCase();
+    return hay.includes(q);
+  })
+.sort(sorter1);
+
+
+ /*    .slice(0, 120); */
 
   list.innerHTML = items.map(s=>{
-    const when = t(s) ? new Date(t(s)) : null; const key = makeKey(s); const huntedByMe = isHuntedByYou(key);
-    const b = toBand(freq(s));
-    const fTxt = fmtMHz(freq(s));
-    const p = park(s);
-    const parkLink = p ? `https://pota.app/#/park/${encodeURIComponent(p)}` : null;
-    const callLink = call(s) ? `https://www.qrz.com/lookup/${encodeURIComponent(call(s))}` : null;
-    const dist = getDistanceMi(s);
-    const distTxt = isFinite(dist) ? `${Math.round(dist)} mi` : "";
+  // Normalize POTA times: spotTime is UTC but comes without timezone
+  const rawTime =
+    s.spotTime ||
+    s.time ||
+    s.activatorLastSpotTime ||
+    s.createdAt ||
+    s.timestamp ||
+    null;
 
-    return `
-      <article class="item ${b?bandClass(b):""}" role="listitem">
-        <!-- LINE 1: dense chips (one line, truncates) -->
-        <div class="line line1 wrap">
-          <div class="chips truncate">
-            ${b ? `<span class="chip">${b}</span>` : ``}
-            ${mode(s) ? `<span class="chip">${mode(s)}</span>` : ``}
-            <span class="chip">Active ${when ? relTime(when) : ""}</span>
-            ${call(s) ? `<a class="link chip" href="${callLink||'#'}" target="_blank" rel="noreferrer">${call(s)}</a>` : ``}
-            ${p ? (parkLink ? `<a class="link chip" href="${parkLink}" target="_blank" rel="noreferrer">${p}</a>` : `<span class="chip">${p}</span>`) : ``}
-            ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
-            <span class="chip">Active ${when ? relTime(when) : ""}</span>
-          </div>
-          <div class="right muted"><span class="chip">${fTxt}</span><label class="hunt"><input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted</label></div>
-        </div>
-        <!-- LINE 2 (optional, clamped to 2 lines total): park name / note -->
-        ${ (pname(s) || note(s)) ? `
-          <div class="line line2">
-            <div class="clamp2 muted">${[pname(s), note(s)].filter(Boolean).join(" — ")}</div>
-          </div>` : ``}
-      </article>`;
+  let when = null;
+  if (rawTime) {
+    let ts = String(rawTime);
+    // If there is no timezone marker, assume UTC and append "Z"
+    if (!/[Zz]|[+-]\d\d:?(\d\d)?$/.test(ts)) {
+      ts += "Z";
+    }
+    when = new Date(ts);
+  }
+
+  const key = makeKey(s);
+  const huntedByMe = isHuntedByYou(key); 
+
+  const b = toBand(freq(s));
+  const fTxt = fmtMHz(freq(s));
+  const p = park(s);
+  const parkLink = p ? `https://pota.app/#/park/${encodeURIComponent(p)}` : null;
+  const callLink = call(s) ? `https://www.qrz.com/lookup/${encodeURIComponent(call(s))}` : null;
+  const dist = getDistanceMi(s);
+  const distTxt = isFinite(dist) ? `${Math.round(dist)} mi` : "";
+
+
+     return `
+<article class="item ${b ? bandClass(b) : ""}" role="listitem" style="position:relative;">
+  <div class="spot-hover-wrapper">
+
+    <!-- LINE 1 -->
+    <div class="line line1 wrap">
+      <div class="chips truncate">
+      
+        ${call(s)
+          ? `<a class="link chipcs" href="${callLink || "#"}" target="_blank" rel="noreferrer" font-size=".5rem" >${call(s)}</a>`
+          : ``}
+        ${
+          p
+            ? parkLink
+              ? `<a class="link chip" href="${parkLink}" target="_blank" rel="noreferrer">${p}</a>`
+              : `<span class="chip">${p}</span>`
+            : ``
+        }
+        ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
+         
+      </div>
+
+      <div class="right muted">
+        <span class="chipcs">${fTxt}</span>
+        <label class="hunt">
+          <input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted
+        </label>
+      </div>
+    </div>
+
+    <!-- LINE 2 -->
+ 
+
+    <!-- ⭐ TOOLTIP ⭐ -->
+    <div class="tooltip-box">
+    
+      
+      ${s.name ? `${distTxt} to ${s.name}, ${s.locationDesc}<br>` : ""}
+      ${s.mode ? `${s.mode} on ${b}<br>` : ""}
+     
+      Active ${when ? relTime(when) : ""}
+      
+    
+    </div>
+
+  </div>
+</article>
+`;
+
+
+
   }).join("");
 
   if (!items.length) {
     list.innerHTML = `<div class="muted" style="padding:.8rem">No spots match your filters.</div>`;
   }
 }
+
 
 bandSel.onchange = modeSel.onchange = sortSel.onchange = (sortSel2 ? (e=>render(e)) : (e=>render(e))); 
 qInput.oninput = render;
