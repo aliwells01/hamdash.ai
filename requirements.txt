@@ -9,3 +9,6 @@ loguru
 beautifulsoup4
 python-multipart
 numpy
+python-dotenv
+aiosqlite
+websockets
