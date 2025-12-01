@@ -7,3 +7,4 @@ aiohttp
 python-dateutil
 loguru
 beautifulsoup4
+python-multipart
