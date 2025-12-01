@@ -15,8 +15,8 @@ RTL_HOST = os.environ.get("RTL_HOST", "127.0.0.1")
 RTL_PORT = int(os.environ.get("RTL_PORT", "1234"))
 RIG_HOST = os.environ.get("RIG_HOST", "127.0.0.1")
 RIG_PORT = int(os.environ.get("RIG_PORT", "4532"))   # 4532 rigctld (G90), or 4533 SDR++ RigCTL server
-DB_PATH  = os.environ.get("SPOTS_DB", "/Users/aw/documents/hobbies/ham/radio_intel/data/spots.sqlite")
-BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "8787"))  # <— HTTP/WS port
+DB_PATH  = os.environ.get("SPOTS_DB", "/data/spots.sqlite")
+BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "8000"))  # <— HTTP/WS port
 
 FFT_SIZE = int(os.environ.get("FFT_SIZE", "2048"))
 FPS      = int(os.environ.get("FPS", "12"))
@@ -31,7 +31,7 @@ RIGCTL_PORT    = int(os.environ.get("RIGCTL_PORT", "4600")) # 4600 rigctld (G90)
 
 
 import aiohttp, os
-APP_UPSTREAM = os.environ.get("APP_UPSTREAM", "http://127.0.0.1:8000")
+APP_UPSTREAM = os.environ.get("APP_UPSTREAM", "https://hamdash-ai.onrender.com")
 
 tune_queue: asyncio.Queue[int] = asyncio.Queue()
 
@@ -642,7 +642,7 @@ import aiohttp
 import os
 
 # Where app.py is listening:
-APP_UPSTREAM = os.environ.get("APP_UPSTREAM", "http://127.0.0.1:8000")
+APP_UPSTREAM = os.environ.get("APP_UPSTREAM", "https://hamdash-ai.onrender.com")
 
 async def _proxy_json_get(session, path, params):
     url = APP_UPSTREAM + path
@@ -781,7 +781,7 @@ app["center_hz"] = int(os.environ.get("CENTER_HZ", "14230000"))
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("BACKEND_PORT", "8787"))
+    port = int(os.environ.get("BACKEND_PORT", "8000"))
     # Optional: print routes for debugging
     for r in app.router.routes():
         try:
