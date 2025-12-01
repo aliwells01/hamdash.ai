@@ -29,6 +29,10 @@ from fastapi.responses import JSONResponse
 from xml.etree import ElementTree as ET
 from fastapi import Body
 
+from fastapi import APIRouter
+router = APIRouter()
+
+
 
 
 # --- Optional .env support ---
@@ -335,12 +339,12 @@ async def callook_lookup(call: str) -> Optional[dict]:
 
 
 # --- Public endpoints ---
-@app.get("/api/health")
+@router.get("/api/health")
 async def health():
     return {"ok": True}
 
 
-@app.get("/api/qrz/lookup")
+@router.get("/api/qrz/lookup")
 async def api_lookup(call: str = Query(..., description="Callsign to look up")):
     call = call.strip().upper()
 
@@ -362,7 +366,7 @@ async def api_lookup(call: str = Query(..., description="Callsign to look up")):
     raise HTTPException(404, "Not found")
 
 
-@app.post("/api/qrz/insert")
+@router.post("/api/qrz/insert")
 async def qrz_insert(
     call: str = Form(...),
     band: str = Form(...),
@@ -435,7 +439,7 @@ def save_last_sync_ts(ts: str):
         pass  # non-fatal
 
 
-@app.post("/api/pota/sync")
+@router.post("/api/pota/sync")
 async def pota_sync():
     last_ts = load_last_sync_ts()   # can be None (first run)
 
@@ -578,7 +582,7 @@ async def pota_sync():
 
     return {"ok": True, "count": len(new_records)}
 
-@app.get("/api/pota/last_sync")
+@router.get("/api/pota/last_sync")
 def pota_last_sync():
     """Return last POTA sync timestamp."""
     ts = load_last_sync_ts()
@@ -587,7 +591,7 @@ def pota_last_sync():
 
 
 
-@app.post("/api/pota/paste_sync")
+@router.post("/api/pota/paste_sync")
 async def pota_paste_sync(qsos: dict = Body(...)):
     print("qsos POSTed from frontend:", qsos)
     print("=== /api/pota/paste_sync CALLED ===")
@@ -645,7 +649,7 @@ async def pota_paste_sync(qsos: dict = Body(...)):
 
 
 
-@app.get("/api/suggest")
+@router.get("/api/suggest")
 async def suggest(
     q: str = Query(..., min_length=2, description="Callsign prefix (2+ chars)"),
     limit: int = Query(12, ge=1, le=50),
@@ -688,7 +692,7 @@ async def suggest(
 
 
 # --- Diagnostics ---
-@app.get("/api/qrz/diag")
+@router.get("/api/qrz/diag")
 async def qrz_diag():
     env = {
         "QRZ_XML_USER_set": bool(QRZ_XML_USER),
@@ -704,7 +708,7 @@ async def qrz_diag():
         return JSONResponse(status_code=502, content={"env": env, "login": "FAIL", "detail": e.detail})
 
 
-@app.get("/api/qrz/diag_raw")
+@router.get("/api/qrz/diag_raw")
 async def qrz_diag_raw():
     env = {
         "QRZ_XML_USER_set": bool(QRZ_XML_USER),
@@ -721,3 +725,6 @@ async def qrz_diag_raw():
         return {"env": env, "login": "OK", "key_length": len(key), "raw_start": raw}
     except HTTPException as e:
         return JSONResponse(status_code=502, content={"env": env, "login": "FAIL", "detail": e.detail})
+
+
+    __all__ = ["router"]

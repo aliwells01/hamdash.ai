@@ -12,6 +12,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+
+
 # Import your own backend logic
 import app               # QRZ lookup, CAT control, etc.
 import radio_backend     # SOTA, POTA, WWFF, DX, scoring, merging, etc.
@@ -30,6 +32,8 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+# Include all routes from app.py
+app.include_router(app.router)
 
 # -----------------------------------------------------------
 #     QRZ / CALLSIGN LOOKUPS
@@ -132,4 +136,3 @@ def score_call(call: str):
 @app.get("/api/status")
 def status():
     return {"status": "online", "detail": "HAM Dashboard Backend running"}
-
