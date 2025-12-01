@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HAM 3-Panel Dashboard</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#0f1115;--panel:#151923;--text:#e9edf1;--muted:#9aa3b2;
+    --accent:#3b82f6;--gutter:#222838;--radius:16px;--shadow:0 6px 20px rgba(0,0,0,.35);
+    --topbar-h:0px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+  body{background:linear-gradient(180deg,#0ffffff,,#5f5f5f);user-select:none}
+  .topbar{height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:var(--muted);border-bottom:1px solid #1a2130;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);position:sticky;top:0;z-index:3}
+  .topbar h1{margin:0;font-size:14px;letter-spacing:.4px;color:#cfd6e4;font-weight:600}
+  .actions{display:flex;gap:8px}
+  .btn{border:1px solid #1f2736;background:#121622;color:#cfd6e4;padding:6px 10px;border-radius:10px;cursor:pointer}
+  .btn:hover{border-color:#2a364d}
+  .btn.accent{border-color:#2c5bd6;background:#15306b}
+
+  .wrap{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;display:flex;gap:0;padding:12px 12px 0 12px}
+  html,body{overflow:hidden}
+
+  .col-left,.col-right{height:100%}
+  .col-left{width:34%;min-width:260px;max-width:80%;display:flex;flex-direction:column;border-radius:var(--radius);
+    background:radial-gradient(1200px 400px at 0% 0%,rgba(59,130,246,.08),transparent 45%),var(--panel);box-shadow:var(--shadow);overflow:hidden}
+  .col-right{flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px}
+
+  .pane{position:relative;background:var(--panel);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;min-height:120px}
+  iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0d111a}
+
+  .gutter-v,.gutter-h{position:relative;z-index:4;flex:none;background:transparent}
+  .gutter-v{width:8px;cursor:col-resize;margin:0 4px}
+  .gutter-h{height:8px;cursor:row-resize;margin:4px 0}
+  .gutter-line{position:absolute;inset:0;margin:auto;background:var(--gutter);border-radius:8px;opacity:.8}
+  .gutter-v .gutter-line{width:2px;height:70%}
+  .gutter-h .gutter-line{height:2px;width:70%}
+
+  .formwrap{position:absolute;inset:0;padding:14px;overflow:auto}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid .full{grid-column:1/-1}
+  label{display:block;font-size:12px;color:#aeb7c7;margin-bottom:4px}
+  input,select{width:100%;height:32px;padding:6px 8px;border-radius:10px;border:1px solid #24324a;background:#0f1423;color:#e8eefb;outline:none}
+  input:focus,select:focus{border-color:#35507d}
+  .hint{color:#9aa3b2;font-size:12px}
+
+
+    .field { position: relative; max-width: 420px; }
+    .ac-list {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+      border: 1px solid #ccc; border-top: none; background: #fff;
+      max-height: 260px; overflow-y: auto; display: none;
+      box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    }
+    .ac-item {
+      padding: 8px 10px; cursor: pointer; line-height: 1.3;
+    }
+    .ac-item[aria-selected="true"], .ac-item:hover {
+      background: #eef3ff;
+    }
+    .ac-call { font-weight: 700; margin-right: .5rem; }
+    .ac-name { color: #555; }
+
+.snr-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 10px;
+    color: #0d0d0d;
+    background: #ffd24d;  /* default medium */
+}
+
+.snr-strong  { background:#ffe066; }
+.snr-hot     { background:#fff799; }
+.snr-weak    { background:#ccb86a; }
+
+
+
+  /* Suggestions */
+  .suggest-wrap{position:relative}
+  .suggest-box{position:absolute;top:100%;left:0;right:0;max-height:100px;overflow:auto;z-index:50;background:#11182748;border:1px solid #374151;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.4);margin-top:6px}
+  .suggest-item{padding:4px 10px;cursor:pointer;justify-content:space-between;gap:10px;background:#ffffff48;border:1px solid #ffffff;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.4)}
+  .suggest-item:hover,.suggest-item.active{background:#ffffff48;border:1px solid #ffffff;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.4)}
+  .suggest-call{font-weight:700;letter-spacing:.5px}
+  .suggest-meta{opacity:.75;font-size:.9em}
+
+  @media (max-width:980px){
+    .wrap{flex-direction:column}
+    .gutter-v{display:none}
+    .col-left{width:100%;min-height:40vh}
+    .col-right{min-height:50vh}
+  }
+
+
+
+
+
+  /* Top-right pane must define a box that has height */
+/* #pane-top{ display:flex; min-height:420px; position:relative; }
+
+ :root{
+  --specH: 140px;       
+  --wfPanelH: 220px;    
+}
+
+#pane-top{
+  display:flex;
+  min-height: var(--wfPanelH);
+  position:relative;
+}*/
+
+/* Top-right pane: spectrum+spots */
+#pane-top{
+  display:flex;
+  min-height: 30vh;   /* ~30% of window height */
+  position:relative;
+}
+
+/* Left section (spectrum+waterfall) */
+.wf-wrap{
+  position:relative;
+  flex:1;
+  min-width:0;
+  background:#000;
+  overflow:hidden;
+}
+
+/* Right section (spots list) */
+#spotsSide{
+  width:220px;
+  flex:0 0 220px;
+  background:#111;
+  color:#eee;
+  border-left:1px solid #222;
+  display:flex;
+  flex-direction:column;
+}
+
+#spotsSide .spotsHeader{
+  position:sticky;
+  top:0;
+  background:#181818;
+  padding:6px 8px;
+  border-bottom:1px solid #222;
+}
+
+/* Spectrum bar (top) */
+#specCanvas{
+  position:absolute;
+  left:0; right:0; top:0; 
+  width:100%;
+  height:100%;                        
+  display:block;
+  pointer-events:auto;
+  background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0));
+  z-index:4;
+}
+
+
+/* Waterfall starts *below* spectrum */
+#wfCanvas, #ovCanvas{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  top: var(--specH);
+  width:100%;
+  display:block;
+}
+
+/* Tooltip and status */
+#specTip{
+  position:absolute;
+  top: calc(var(--specH) + 2px);
+  left:8px;
+  background:rgba(0,0,0,.55);
+  color:#eee;
+  padding:3px 6px;
+  border-radius:6px;
+  font:12px system-ui;
+  z-index:5;
+}
+#wfStatus{
+  position:absolute;
+  top:8px;
+  left:8px;
+  background:rgba(0,0,0,.55);
+  color:#eee;
+  padding:4px 8px;
+  border-radius:6px;
+  font:12px system-ui;
+  z-index:5;
+}
+
+/* Optional cosmetic tweaks */
+#spotsList{
+  list-style:none;
+  margin:0;
+  padding:0;
+  overflow:auto;
+  flex:1;
+}
+
+/* NEW: Spectrum full width and fixed height */
+#spectrumContainer {
+    width: 100%;
+    height: 30vh;          /* top area = 30% of viewport height */
+    min-height: 200px;     /* prevent collapsing on small windows */
+    position: relative;
+}
+
+/* Ensures canvas fills the container and is NOT distorted 
+#specCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* New bottom 3-column layout */
+#threeColRow {
+    display: flex;
+    gap: 12px;
+    height: calc(70vh - 24px);  /* remaining height after spectrum */
+}
+
+/* The canvases must absolutely fill their wrapper 
+#wfCanvas, #ovCanvas{
+  position:absolute; inset:0;
+  width:100%; height:100%; display:block;
+}
+
+
+#specCanvas{
+  position:absolute; left:0; right:0; height:120px; bottom:0;
+  width:100%; display:block; pointer-events:auto;
+  background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.45));
+  z-index:4; 
+}
+#specTip{
+  position:absolute; bottom:122px; left:8px; z-index:5;
+  background:rgba(0,0,0,.55); color:#eee; padding:3px 6px; border-radius:6px;
+  font:12px system-ui;
+}*/
+
+/* Bottom-right split: logging (left) + settings (right) */
+.bottom-split{
+  position: absolute; inset:0; padding:10px; display:grid; gap:14px;
+  grid-template-columns: 1.4fr 0.6fr; /* logging smaller, settings column appears */
+  overflow:auto;
+}
+@media (max-width: 980px){
+  .bottom-split{ grid-template-columns: 1fr; }
+}
+.settings-card{
+  background: #101522; border: 1px solid #20283a; border-radius: 14px; padding: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+.settings-card h3{ margin: 0 0 10px 0; font-size: 14px; color:#cfd6e4; }
+.settings-row{ display:flex; align-items:center; gap:10px; margin:10px 0; }
+.settings-row label{ margin:0; color:#cfd6e4; font-size:13px; }
+.settings-hint{ color:#9aa3b2; font-size:12px; margin-left:28px; }
+
+
+/* --- Settings checkbox: text-sized and aligned --- */
+.settings-row{
+  display:flex; align-items:center; gap:10px; margin:10px 0;
+}
+.settings-row input[type="checkbox"]{
+  /* make it roughly the same size as text */
+  inline-size: 1em;
+  block-size: 1em;
+  margin: 0;
+  vertical-align: middle;
+  /* modern browsers: allows tint; remove if you don't want it */
+  accent-color: #5f78ff;
+}
+.settings-row label{ margin:0; color:#cfd6e4; font-size:13px; line-height:1.2; }
+
+/* --- Logger layout: Callsign on its own top line; QRZ dropdown at right --- */
+#qsoForm *{ box-sizing: border-box; }
+
+/* top row: callsign + qrz dropdown area */
+#qsoForm .cs-row{
+  display:grid;
+  grid-template-columns: 1fr minmax(200px, 280px); /* input grows, dropdown area fixed-ish */
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+/* callsign cell */
+#qsoForm .cs-cell label{
+  display:block; font-size:12px; color:#9aa3b2; margin-bottom:6px;
+}
+#qsoForm #cs.fld{ width:150px; }
+
+/* right-hand QRZ dropdown cell */
+#qsoForm .qrz-cell{
+  /* acts as a holder so the dropdown stays right of callsign */
+  min-height: 38px;  /* matches input height visually */
+  position: relative;
+}
+#qsoForm .qrz-cell .suggest-box{
+  display:none;         /* your JS will toggle this */
+  position: relative;   /* keep it inside this cell */
+  max-height: 150px; overflow:auto;
+  background:#0f1320; border:1px solid #2026373a; border-radius:10px;
+}
+
+/* grid for the remaining fields (wrap to next lines) */
+#qsoForm .grid{
+  display:grid; gap:10px;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  align-items:end;
+}
+@media (max-width: 1200px){
+  #qsoForm .grid{ grid-template-columns: repeat(3, minmax(140px,1fr)); }
+}
+@media (max-width: 720px){
+  #qsoForm .grid{ grid-template-columns: 1fr 1fr; }
+}
+
+/* field + buttons styling keeps your existing look */
+#qsoForm label{ display:block; font-size:12px; color:#9aa3b2; margin-bottom:6px; }
+#qsoForm .fld{
+  background:#0f1320; border:1px solid #202637; border-radius:10px; padding:10px 12px; color:#e9edf1; outline:none; width:100%;
+}
+#qsoForm .fld:focus{ border-color:#3454ff; box-shadow:0 0 0 2px rgba(52,84,255,.15); }
+#qsoForm .row{ display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; }
+#qsoForm .btn{
+  border:1px solid #2e3750; background:linear-gradient(180deg,#111827,#0d1421);
+  color:#e9edf1; padding:10px 16px; border-radius:999px; cursor:pointer; font-weight:600;
+}
+#qsoForm .btn.primary{ border-color:#2e64ff; background:linear-gradient(180deg,#0f2a7a,#0b1d56); }
+
+:root{
+  --specH: 140px;   /* spectrum strip height */
+}
+#topBlankPanel{ min-height:60px; } /* tweak as desired */
+
+
+
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+
+  <!-- TOP: Full-width spectrum (fake) -->
+  <div id="spectrumContainer" class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
+      <canvas id="specCanvas" width="1200" height="300"></canvas>
+      <div id="specTip">—</div>
+  </div>
+
+  <!-- BOTTOM: 3-column layout -->
+  <div id="threeColRow" style="
+      display:flex; 
+      flex:1; 
+      gap:12px;
+      min-height:0;
+  ">
+
+<section class="pane" style="flex:1; min-width:0; position:relative;">
+    <iframe id="iframe-pota" 
+            src="https://aliwells01.github.io/hamdash.ai/pota-cards-mock.html"
+            style="width:100%; height:100%; border:none;">
+    </iframe>
+</section>
+
+      <!-- CENTER: Logger (1/3 width) -->
+<!--       <section class="pane" id="pane-logger" style="flex:1; min-width:0; padding:10px; position:relative; overflow:visible;">
+          <div class="bottom-split"> -->
+
+
+<div id="centerColumn" style="flex:1; min-width:0; display:flex; flex-direction:column; gap:12px;">
+    <section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
+        
+      <div class="spotsCtrls">
+       
+        <span>Center: <span id="spotsCenter" style="font-size:20px"></span></span>
+       
+      </div>
+
+      <div class="spotsCtrls" style="display:flex; flex-direction:column;align-items: center;margin-left: auto; margin-right: auto;">
+       
+        <br></br>
+        <div class="snr-badge" id="utcClock" style="font-size:20px; vertical-align: middle;"></div>
+
+
+      </div>
+
+
+<div style="margin-top:7em; ">
+  <label><b>POTA Hunter Log Paste  </b><button id="potaPasteSyncBtn" type="button">Sync</button>
+    <textarea id="potaPaste" rows="2" style="width:100%" placeholder="Paste your POTA hunter log here..."></textarea>
+ 
+   </label>
+  <span id="potaPasteStatus" style="margin-left:1em; color:#555"></span>
+</div>
+
+
+
+    </section>
+  <section class="pane" id="logger-bottom" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
+    
+    <!-- Left: existing logger (slightly narrower now) -->
+    <div>
+      <form id="qsoForm" autocomplete="off">
+        <!-- keep your existing #qsoForm <style> if you want; or remove the inline style on the old form -->
+        <!-- BEGIN: your existing logger form body (unchanged) -->
+        <style>
+          #qsoForm *{box-sizing:border-box}
+          #qsoForm .grid{
+            display:grid; gap:10px; grid-template-columns: 60px 60px 60px 1fr 60px;
+            align-items:end;
+          }
+          #qsoForm label{ display:block; font-size:12px; color:#9aa3b2; margin-bottom:6px; }
+          #qsoForm .fld{
+            background:#0f1320; border:1px solid #202637; border-radius:10px; padding:10px 12px; color:#e9edf1;
+            outline:none; width:100%;
+          }
+          #qsoForm .fld:focus{ border-color:#3454ff; box-shadow:0 0 0 2px rgba(52,84,255,.15); }
+          #qsoForm .mhzwrap{ display:flex; align-items:center; }
+          #qsoForm .mhz{ background:#0f49ff; color:#fff; font-weight:700; padding:10px 10px; margin-left:6px; border-radius:8px; }
+          #qsoForm .row{ display:flex; gap:12px; margin-top:12px; }
+          #qsoForm select.fld{font-size: 12px;line-height: 1;padding: 10px 12px;-webkit-appearance: none;-moz-appearance: none;appearance: none;}
+          #qsoForm .btn{
+            border:1px solid #2e3750; background:linear-gradient(180deg,#111827,#0d1421); color:#e9edf1; padding:10px 16px; border-radius:999px; cursor:pointer; font-weight:600;
+          }
+          #qsoForm .btn:hover{ border-color:#3b475f }
+          #qsoForm .btn.primary{ border-color:#2e64ff; background:linear-gradient(180deg,#0f2a7a,#0b1d56) }
+          #qsoForm .muted{ color:#9aa3b2; font-size:12px; }
+          #qsoForm .info{ font-size:12px; color:#9aa3b2; margin-left:6px; }
+          #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
+        </style>
+
+<!-- Top line: Callsign (left) + QRZ dropdown (right) -->
+<div class="cs-row">
+  <div class="cs-cell">
+    <label>Enter Callsign</label>
+    <input id="cs" class="fld" placeholder="Start typing.." required autocomplete="off">
+  </div>
+  <div class="qrz-cell">
+     <label>Suggestion...</label>
+    <!-- your existing suggestion/lookup dropdown goes here -->
+    <div id="whois" class="hint" style="display:none"></div>
+    <div class="hint" style="display:none"></div>
+    <div id="call-suggest" class="suggest-box"></div>
+  </div>
+</div>
+
+<!-- Next lines: the rest of the inputs -->
+<div class="grid">
+  <div class="grid-item">
+    <label>RST Sent</label>
+    <input id="rstS" class="fld" value="59">
+  </div>
+
+  <div class="grid-item">
+    <label>RST Rcvd</label>
+    <input id="rstR" class="fld" value="59">
+  </div>
+
+  <div class="grid-item">
+    <label>Frequency</label>
+    <input id="freq" class="fld" placeholder="MHz">
+  </div>
+
+  <div class="grid-item">
+    <label>Band</label>
+    <select id="band" class="fld">
+     <option value="">20m</option>
+      <option>160m</option><option>80m</option><option>60m</option><option>40m</option>
+      <option>30m</option><option>17m</option><option>15m</option>
+      <option>12m</option><option>10m</option><option>6m</option><option>2m</option>
+      <option>70cm</option>
+    </select>
+  </div>
+
+  <div class="grid-item">
+    <label>Mode</label>
+    <select id="mode" class="fld">
+      <option value="">SSB</option>
+      <option>LSB</option><option>USB</option><option>AM</option><option>FM</option>
+      <option>CW</option><option>FT8</option><option>FT4</option><option>RTTY</option><option>PSK31</option>
+    </select>
+  </div>
+</div>
+
+<!-- Buttons row (unchanged) -->
+<div class="row">
+  <div style="display:flex; gap:10px; align-items:flex-end;">
+    <button id="saveBtn" class="btn primary" type="button">Log Contact</button>
+    <button id="clearBtn" class="btn" type="button">Clear</button>
+  </div>
+</div>
+
+
+
+
+
+    <!-- Right: settings column -->
+    <aside class="settings-card">
+      <h3>Settings</h3>
+      <div class="settings-row">
+        <input type="checkbox" id="set_mhz_tunes" />
+        <label for="set_mhz_tunes">MHz click also tunes rig (CAT)</label>
+      </div>
+    </aside>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+          </div>
+      </section>
+
+      <!-- RIGHT: Spots list (1/3 width) -->
+      <section class="pane" id="pane-spots" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column;">
+
+          <div class="spotsHeader">
+              <b>Spots</b>
+<!--               <div class="spotsCtrls">
+                <button class="btn" id="spotsRefresh">Refresh</button>
+                <span>Center: <span id="spotsCenter">—</span></span>
+              </div> -->
+              <div class="spotsOpts">
+                Span: ±<input id="spotsSpanKhz" style="width: 100px;" type="number" value="50"> kHz
+                <label>
+                  Mode
+                  <select id="spotMode" style="width: 100px;">
+                    <option value="">All</option>
+                    <option value="SSB" selected>SSB</option>
+                  </select>
+                </label>
+              </div>
+          </div>
+
+          <ul id="spotsList" style="flex:1; overflow:auto;"></ul>
+      </section>
+
+  </div>
+</div>
+
+
+      <div class="gutter-h" id="gutter-h"><div class="gutter-line"></div></div>
+
+     
+     
+<script>
+// --------------------------------------
+//    Backend API base URL
+// --------------------------------------
+const API = "https://hamdash-ai.onrender.com";
+
+// --------------------------------------
+//    Load All Spots → update your UI
+// --------------------------------------
+async function loadAllSpots() {
+    const res = await fetch(`${API}/api/spots/all`);
+    const spots = await res.json();
+    updateWaterfall(spots);
+}
+
+// Example additional endpoints:
+async function lookupCallsign(cs) {
+    return (await fetch(`${API}/api/qrz/${cs}`)).json();
+}
+
+function tune(freqHz) {
+    fetch(`${API}/api/rig/tune`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(freqHz)
+    });
+}
+
+// --------------------------------------
+//    Start on load
+// --------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+    loadAllSpots();
+    setInterval(loadAllSpots, 30000);
+});
+</script>
+
+
+
+<script>
+
+// ===== Config (single source of truth) =====
+// REPLACE WITH YOUR RENDER URL BELOW
+const API = "https://YOUR-RENDER-URL.onrender.com/api";
+
+const SUG_LIMIT = 12;
+
+
+
+
+
+/*   // ===== Config =====
+  const BACKEND_BASE = location.protocol + '//' + location.hostname + ':1234';
+  const SUG_LIMIT = 12; */
+
+  // ===== Reload iframes =====
+  if (document.getElementById('reloadAll')) document.getElementById('reloadAll').onclick = ()=>{
+    ['#iframe-pota','#iframe-hambook'].forEach(sel=>{
+      const f = document.querySelector(sel);
+      if (f) f.src = f.src;
+    });
+  };
+
+  // ===== Splitters + persistence =====
+  const leftPane = document.getElementById('pane-left');
+  const rightCol = document.getElementById('col-right');
+  const gutV = document.getElementById('gutter-v');
+  const topPane = document.getElementById('pane-top');
+  const bottomPane = document.getElementById('pane-bottom');
+  const gutH = document.getElementById('gutter-h');
+  const SKEY = 'ham3panel-sizes-v1';
+  function loadSizes(){
+    try{
+      const s = JSON.parse(localStorage.getItem(SKEY) || '{}');
+      if (s.leftWidthPct) leftPane.style.width = s.leftWidthPct + '%';
+      if (s.topHeightPct){
+        topPane.style.height = s.topHeightPct + '%';
+        bottomPane.style.height = (100 - s.topHeightPct) + '%';
+      }
+    }catch(e){}
+  }
+  function saveSizes(){
+    const wrapRect = document.getElementById('wrap').getBoundingClientRect();
+    const leftRect = leftPane.getBoundingClientRect();
+    const rightRect = rightCol.getBoundingClientRect();
+    const leftWidthPct = Math.round((leftRect.width / (wrapRect.width)) * 100);
+    const topRect = topPane.getBoundingClientRect();
+    const totalRightH = rightRect.height;
+    const topHeightPct = Math.round((topRect.height / totalRightH) * 100);
+    localStorage.setItem(SKEY, JSON.stringify({leftWidthPct, topHeightPct}));
+  }
+  loadSizes();
+
+ /*  (function(){ // vertical drag
+    let dragging=false;
+    gutV.addEventListener('mousedown', ()=>{ dragging=true; document.body.style.cursor='col-resize'; });
+    window.addEventListener('mouseup', ()=>{ if(dragging){ dragging=false; document.body.style.cursor=''; saveSizes(); }});
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const wrap = document.getElementById('wrap').getBoundingClientRect();
+      let x = e.clientX - wrap.left;
+      const min = 220, max = wrap.width - 320;
+      x = Math.max(min, Math.min(max, x));
+      leftPane.style.width = x + 'px';
+    });
+  })(); 
+  (function(){ // horizontal drag
+    let dragging=false;
+    gutH.addEventListener('mousedown', ()=>{ dragging=true; document.body.style.cursor='row-resize'; });
+    window.addEventListener('mouseup', ()=>{ if(dragging){ dragging=false; document.body.style.cursor=''; saveSizes(); }});
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const r = rightCol.getBoundingClientRect();
+      let y = e.clientY - r.top;
+      const min = 120, max = r.height - 120;
+      y = Math.max(min, Math.min(max, y));
+      const pct = (y / r.height) * 100;
+      topPane.style.height = pct + '%';
+      bottomPane.style.height = (100 - pct) + '%';
+    });
+  })();*/
+  if (document.getElementById('resetSizes')) document.getElementById('resetSizes').onclick = ()=>{
+    localStorage.removeItem(SKEY);
+    leftPane.style.width = '34%';
+    topPane.style.height = '55%';
+    bottomPane.style.height = '45%';
+  };
+
+  // ===== Suggestions (≥2 chars) =====
+ 
+
+ let whoisTimer = null;
+  async function doWhois(force=false){
+    const call = callInput.value.trim().toUpperCase();
+    if (!force && call.length < 1){
+      whois.textContent = "";
+      renderSuggest([]);
+      return;
+    }
+    try{
+      whois.textContent = "Looking up…";
+      const r   = await fetch(`${API}/qrz/lookup?call=${encodeURIComponent(call)}`, { cache:'no-store' });
+      const txt = await r.text();
+
+      if (!r.ok){
+        whois.textContent = (r.status >= 500) ? `Lookup failed (${r.status})` : "";
+        renderSuggest([]);  // hide dropdown on 4xx/5xx
+        return;
+      }
+
+      const j = JSON.parse(txt);
+      const returnedCall = (j.call || j.CALL || call || "").toUpperCase();
+      const displayName  = j.name || j.NAME || j.fullname || j.op || "";
+      const bits = [j.name, j.surname, j.grid, j.state, j.country].filter(Boolean).join(" • ");
+      whois.textContent = bits || "No details";
+
+      // Only show a row if the returned call still matches the current prefix
+      if (returnedCall.startsWith(call)){
+        renderSuggest([{ call: returnedCall, name: displayName, state: j.state || "" }]);
+      } else {
+        renderSuggest([]);
+      }
+    } catch {
+      whois.textContent = "Lookup failed (network)";
+      renderSuggest([]);
+    }
+  }  
+/* async function doQrzLookup(call) {
+  if (!call || call.length < 3) return;
+
+  try {
+    const res = await fetch(`${API}/qrz/lookup?call=${encodeURIComponent(call)}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    const name =
+      data.name ||
+      data.NAME ||
+      data.fullname ||
+      data.op ||
+      "";
+
+    const whois = document.getElementById("whois");
+    if (whois) {
+      whois.style.display = "";
+      whois.textContent = name || call;
+    }
+
+  } catch (e) {
+    console.warn("QRZ lookup failed:", e);
+  } 
+} */
+ 
+  
+
+
+
+
+  </script>
+
+<script>
+/* ===== Top-right Waterfall + Spots Overlay + Spectrum (stable baseline with view override) ===== */
+/* ===== Top-right Waterfall + Spots Overlay + Spectrum (stable baseline with view override) ===== */
+/* ===== Top-right Waterfall + Spots Overlay + Spectrum (stable baseline with view override) ===== */
+/* ===== Top-right Waterfall + Spots Overlay + Spectrum (stable baseline with view override) ===== */
+
+(function(){
+
+  // --- DOM references ---
+  const SPEC      = document.getElementById('specCanvas');
+  const spc       = SPEC.getContext('2d');
+  const specTip   = document.getElementById('specTip');
+  const spanInput = document.getElementById('spotsSpanKhz');
+  const modeSel   = document.getElementById('spotMode');
+  const centerEl  = document.getElementById('spotsCenter');
+  const btnRef    = document.getElementById('spotsRefresh');
+  const UL        = document.getElementById('spotsList');
+
+  const SPECTRUM_HEIGHT = 200;
+
+  // --- State ---
+  let rawSpots = [];
+  // keep any centerHz already set earlier, otherwise default 14.2 MHz
+  window.centerHz = window.centerHz || 14200000;
+
+  // ========= Helpers =========
+  function HzToMhzStr(hz){
+    if (!hz) return '—';
+    return (hz/1e6).toFixed(5);
+  }
+
+  function getModeFilter(){
+    return (modeSel?.value || '').toUpperCase();
+  }
+
+  // ========= Spectrum geometry =========
+function resizeSpectrum() {
+    const rect = SPEC.getBoundingClientRect();
+    const dpr  = window.devicePixelRatio || 1;
+
+    const INTERNAL_H = 140; // match canvas HTML + CSS
+
+    SPEC.width  = Math.round(rect.width * dpr);
+    SPEC.height = Math.round(INTERNAL_H * dpr);
+
+    spc.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    drawStaticSpectrum();
+}
+
+
+  function getViewCenterHz(){
+    return window.centerHz || 0;
+  }
+
+  async function setViewCenterHz(hz){
+    if (!Number.isFinite(hz) || hz <= 0) return;
+    hz = Math.round(hz);
+    window.centerHz = hz;
+
+    if (centerEl) centerEl.textContent = HzToMhzStr(hz) + ' MHz';
+
+    // Tune rig
+    try {
+      await fetch(`${API}/rig/tune`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ freq_hz: hz })
+      });
+    } catch(e){
+      console.warn('rig/tune failed:', e);
+    }
+
+    drawStaticSpectrum();
+  }
+
+  // expose globally (other scripts may use)
+  window.setViewCenterHz = setViewCenterHz;
+  window.getViewCenterHz = getViewCenterHz;
+
+  function xForFreq(freqHz){
+    const rect = SPEC.getBoundingClientRect();
+    const w    = rect.width || 1;
+    const cHz  = getViewCenterHz();
+    const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
+    return ((freqHz - cHz) / (2*spanHz)) * w + w/2;
+  }
+
+  // ========= Static schematic spectrum =========
+ 
+// ========= Static schematic spectrum =========
+function drawStaticSpectrum(){
+  if (!SPEC) return;
+
+  const rect = SPEC.getBoundingClientRect();
+  const w = rect.width  || 1;
+  const h = rect.height || 140;     // use actual CSS height
+
+  // Zone layout: top for labels, bottom for band
+  const labelZoneFrac = 0.35;       // 35% of height for labels
+  const labelZoneH    = h * labelZoneFrac;
+  const bandH         = h - labelZoneH;   // 65% for band + bars
+  const bandTop       = labelZoneH;       // band starts below label zone
+
+  const labelRows = [];  // used to stagger text
+
+  // Clear & draw band background
+  spc.clearRect(0, 0, w, h);
+
+  spc.fillStyle = '#000000ff';
+  spc.fillRect(0, bandTop, w, bandH);
+  spc.strokeStyle = '#ae2960ff';
+  spc.lineWidth   = 2;
+  spc.strokeRect(0, bandTop, w, bandH);
+
+  // =====================================================
+//  TICK MARKS ALONG SPECTRUM  (edit tickKHz to adjust)
+// =====================================================
+const tickKHz = 10;   // <-- EDIT THIS (10 = every 10 kHz)
+const spanHz  = (Number(spanInput.value || 48) * 1000 * 2);
+
+const leftHz  = getViewCenterHz() - spanHz/2;
+const rightHz = getViewCenterHz() + spanHz/2;
+
+// find the first tick aligned with tickKHz
+const firstTickHz = Math.ceil(leftHz / (tickKHz * 1000)) * (tickKHz * 1000);
+
+spc.strokeStyle = "#556070";
+spc.fillStyle   = "#8890a0";
+spc.lineWidth   = 1;
+spc.font        = "10px sans-serif";
+spc.textAlign   = "center";
+spc.textBaseline= "bottom";
+
+for (let f = firstTickHz; f <= rightHz; f += tickKHz * 1000) {
+    const x = xForFreq(f);
+
+    // tiny vertical tick line
+    spc.beginPath();
+    spc.moveTo(x, bandTop);
+    spc.lineTo(x, bandTop + 30);
+    spc.stroke();
+
+    // label above band
+    const label = (f/1000).toFixed(1);
+    spc.fillText(label, x, bandTop + 30);
+}
+// =====================================================
+//   CENTER TUNING LINE (vertical indicator at centerHz)
+// =====================================================
+const centerX = xForFreq(getViewCenterHz());
+spc.strokeStyle = "#a0b0ff";   // soft blue
+spc.lineWidth = 0.5;
+
+spc.beginPath();
+spc.moveTo(centerX, 0);
+spc.lineTo(centerX, h);
+spc.stroke();
+
+
+  const modeFilter = getModeFilter();
+
+  (rawSpots || []).forEach(s => {
+    const modeOK = !modeFilter || (s.mode || '').toUpperCase() === modeFilter;
+    if (!modeOK) return;
+
+    const fHz = Number(s.freq) || Number(s.freq_hz) || 0;
+    if (!fHz) return;
+
+    const x = xForFreq(fHz);
+    if (x < 0 || x > w) return;
+
+    const snr  = (typeof s.snr === 'number') ? s.snr : 10;
+    const barH = Math.min(60, Math.max(12, snr * 3));
+    const barW = 8;
+
+    // Bars anchored in the band area
+    const barBottom = bandTop + bandH;          // bottom of band
+    const y         = barBottom - barH;         // top of bar
+
+    // Bar color
+    let col =
+      snr > 25 ? '#fff799' :
+      snr > 18 ? '#ffe066' :
+      snr > 12 ? '#ffd24d' :
+                 '#ccb86a';
+
+    spc.fillStyle = col;
+    spc.fillRect(x - barW/2, y, barW, barH);
+
+    
+
+    // ====== LABEL OVERLAY WITH STAGGER ======
+    // Text color based on SNR
+    let txtColor = '#dfe7ff';
+    if (snr > 25) txtColor = '#fff8b3';
+    else if (snr > 18) txtColor = '#ffe89a';
+
+    spc.textAlign = 'center';
+    spc.textBaseline = 'bottom';
+    spc.fillStyle = txtColor;
+
+    // Callsign text (shortened)
+    let cs = (s.callsign || '').trim();
+    if (cs.length > 7) cs = cs.slice(0, 6) + '…';
+
+    // Choose a label row that doesn't collide horizontally
+    let row = 0;
+    const MIN_HORIZONTAL_SEP = 20;
+    while (
+      labelRows[row] &&
+      labelRows[row].some(px => Math.abs(px - x) < MIN_HORIZONTAL_SEP)
+    ){
+      row++;
+    }
+    if (!labelRows[row]) labelRows[row] = [];
+    labelRows[row].push(x);
+
+    // Label base Y: somewhere in label zone, above bandTop
+    const baseLabelY = bandTop - 4;           // just above band
+    const textY      = baseLabelY - row * 14; // stagger upward
+
+    // Draw callsign
+    spc.font = '8px sans-serif';
+    spc.fillText(cs, x, textY);
+
+ /*    // Program tag (optional)
+    if (s.program) {
+      let lbl = s.program;
+      if (lbl.length > 10) lbl = lbl.slice(0, 9) + '…';
+      spc.font = '9px sans-serif';
+      spc.fillText(lbl, x, textY - 12);
+    } */
+  });
+
+  // DEBUG (optional): comment out when happy
+  // console.log("Canvas:", SPEC.width, SPEC.height, "CSS height:", h);
+}
+
+
+  // Hover tooltip
+  SPEC.addEventListener('mousemove', ev => {
+    const rect = SPEC.getBoundingClientRect();
+    const x    = ev.clientX - rect.left;
+    const w    = rect.width || 1;
+    const cHz  = getViewCenterHz();
+    const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
+    const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
+    specTip.textContent = HzToMhzStr(fHz);
+  });
+  SPEC.addEventListener('mouseleave', () => { specTip.textContent = '—'; });
+
+  // Click-to-tune from band
+  SPEC.addEventListener('click', ev => {
+    const rect = SPEC.getBoundingClientRect();
+    const x    = ev.clientX - rect.left;
+    const w    = rect.width || 1;
+    const cHz  = getViewCenterHz();
+    const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
+    const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
+    console.log('🎯 schematic click →', Math.round(fHz));
+    setViewCenterHz(fHz);
+  });
+
+  spanInput.addEventListener('input', drawStaticSpectrum);
+  modeSel.addEventListener('change', () => {
+    renderSpotList();     // re-filter list
+    drawStaticSpectrum();
+  });
+
+  // ========= Spots fetch + list =========
+  async function refreshSpots(){
+    if (!UL) return;
+    try{
+      const r  = await fetch(`${API}/spots`, { cache:'no-store' });
+      const ct = (r.headers.get('content-type') || '').toLowerCase();
+      if (!ct.includes('application/json')) {
+        const t = await r.text();
+        throw new Error(`Bad content-type: ${ct} body=${t.slice(0,120)}`);
+      }
+      const arr = await r.json();
+      rawSpots = Array.isArray(arr) ? arr : [];
+
+      // Rebuild Mode options (preserve selection)
+      if (modeSel){
+        const prev  = getModeFilter();
+        const modes = Array.from(new Set(
+          rawSpots.map(s => (s.mode || '').toUpperCase()).filter(Boolean)
+        )).sort();
+
+        modeSel.innerHTML = '<option value=\"\">All</option>' +
+          modes.map(m => `<option value=\"${m}\">${m}</option>`).join('');
+
+        if (prev && modes.includes(prev)) modeSel.value = prev;
+        else if (modes.includes('SSB'))   modeSel.value = 'SSB';
+      }
+
+      renderSpotList();
+      drawStaticSpectrum();
+    }catch(e){
+      console.error('refreshSpots failed:', e);
+      rawSpots = [];
+      renderSpotList();
+      drawStaticSpectrum();
+    }
+  }
+
+  function renderSpotList(listOverride){
+    if (!UL) return;
+    const modeFilter = getModeFilter();
+    const items = listOverride ||
+      (!modeFilter ? rawSpots
+                   : rawSpots.filter(s => (s.mode || '').toUpperCase() === modeFilter));
+
+    UL.innerHTML = '';
+    if (!items.length){
+      UL.innerHTML = '<li style="padding:8px; color:#888">No spots</li>';
+      return;
+    }
+
+    items.forEach(s => {
+      const li = document.createElement('li');
+      li.className = 'spot-row';
+
+      const fHz = Number(s.freq) || Number(s.freq_hz) || 0;
+      const mhz = fHz ? HzToMhzStr(fHz) : '—';
+      const cs  = s.callsign || '—';
+      const md  = (s.mode || '').toUpperCase();
+      const lbl = s.program || '';
+      const snr = (typeof s.snr === 'number') ? s.snr.toFixed(1) : '';
+
+    // Pick a badge class based on SNR strength
+    let snrClass = "snr-weak";
+    if (snr > 18) snrClass = "snr-strong";
+    if (snr > 25) snrClass = "snr-hot";
+
+    li.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <b>${cs}</b>
+          <span class="spot-mhz" data-freq="${Math.round(fHz)}"
+                style="color:#a8c1ff; margin-left:6px; cursor:pointer;">
+            ${mhz}
+          </span>
+        </div>
+
+        <span class="snr-badge ${snrClass}">
+          ${snr || ""}
+        </span>
+      </div>
+
+      <div class="spot-meta" style="font-size:10px">
+        ${md || '—'}${lbl ? ' • ' + lbl : ''}
+      </div>
+    `;
+
+
+      // Whole row click → tune + autofill logger
+      li.addEventListener('click', () => {
+        if (!fHz) return;
+        setViewCenterHz(fHz);
+
+        const qs = id => document.getElementById(id);
+        const mhzStr = HzToMhzStr(fHz);
+
+        // Callsign → logger + trigger QRZ lookup
+        if (qs('cs')) {
+          qs('cs').value = cs;
+          qs('cs').dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Standard logger fields
+        if (qs('mode')) qs('mode').value = md || 'SSB';
+        if (qs('freq')) qs('freq').value = mhzStr;
+
+        const bandByFreq = window.bandByFreq || null;
+        if (bandByFreq && qs('band')) {
+          const b = bandByFreq(mhzStr);
+          if (b) qs('band').value = b;
+        }
+      });
+
+
+      // MHz click → recenter view only
+      li.querySelector('.spot-mhz')?.addEventListener('click', ev => {
+        ev.stopPropagation();
+        const f = Number(ev.currentTarget.dataset.freq);
+        if (f > 0) setViewCenterHz(f);
+      });
+
+      UL.appendChild(li);
+    });
+  }
+
+  
+
+  async function refreshCenter(){
+    try{
+      const r = await fetch(`${API}/rig/center_freq`);
+      const j = await r.json();
+      const v = Number(j.center_hz) || 0;
+      if (v > 0) window.centerHz = v;
+    }catch(e){
+      console.warn('refreshCenter failed', e);
+    }
+    if (centerEl){
+      centerEl.textContent = window.centerHz ? HzToMhzStr(window.centerHz) + ' MHz' : '—';
+    }
+    drawStaticSpectrum();
+  }
+
+  // Expose for other scripts if needed
+  window.refreshSpots  = refreshSpots;
+  window.refreshCenter = refreshCenter;
+
+  // Refresh button
+  if (btnRef){
+    btnRef.addEventListener('click', () => {
+      refreshSpots();
+      refreshCenter();
+    });
+  }
+
+  // Initial kick
+  window.addEventListener('DOMContentLoaded', () => {
+    resizeSpectrum();
+    refreshCenter();
+    refreshSpots();
+  });
+
+
+
+  
+})();
+</script>
+
+
+
+<script>
+    (function(){
+      const qs = id => document.getElementById(id);
+      const fields = ()=>({
+        callsign: qs('cs').value.trim().toUpperCase(),
+        rst_s: qs('rstS').value.trim(),
+        rst_r: qs('rstR').value.trim(),
+        freq_mhz: qs('freq').value.trim(),
+        band: qs('band').value,
+        mode: qs('mode').value,
+       /*  hunted: qs('hunted').checked, */
+      });
+
+    const bandByFreq = mhz => {
+      const f = parseFloat(mhz);
+      if (isNaN(f)) return "";
+      if (f>=1.8 && f<2.0) return "160m";
+      if (f>=3.5 && f<4.0) return "80m";
+      if (f>=5.0 && f<5.5) return "60m";
+      if (f>=7.0 && f<7.3) return "40m";
+      if (f>=10.1 && f<10.15) return "30m";
+      if (f>=14.0 && f<14.35) return "20m";
+      if (f>=18.068 && f<18.168) return "17m";
+      if (f>=21.0 && f<21.45) return "15m";
+      if (f>=24.89 && f<24.99) return "12m";
+      if (f>=28.0 && f<29.7) return "10m";
+      if (f>=50.0 && f<54.0) return "6m";
+      if (f>=144.0 && f<148.0) return "2m";
+      if (f>=420.0 && f<450.0) return "70cm";
+      return "";
+    };
+    document.getElementById('freq').addEventListener('input', (e)=>{
+      const b = bandByFreq(e.target.value);
+      if (b) document.getElementById('band').value = b;
+    });
+
+
+      // Clear
+      qs('clearBtn').onclick = ()=>{
+        ['cs','rstS','rstR','freq'].forEach(id=>qs(id).value='');
+        qs('band').value = ''; qs('mode').value = ''; qs('hunted').checked = false;
+      };
+
+      const mode = document.getElementById('mode').value || "SSB";
+
+
+// Save → send to QRZ (and skip the placeholder /api/log/local)
+
+qs('saveBtn').onclick = async () => {
+  const f = fields();
+  if (!f.callsign) { alert('Enter callsign'); return; }
+  if (!f.freq_mhz) { alert('Enter frequency (MHz)'); return; }
+
+  // Normalize / prep values
+  const call = String(f.callsign || '').toUpperCase();
+  const freq = String(f.freq_mhz || '');
+  const band = f.band || '';
+  const mode = f.mode?.toUpperCase() || 'SSB';
+  const rst_sent = f.rst_s || '59';
+  const rst_rcvd = f.rst_r || '59';
+
+  // Build FormData instead of JSON
+  const form = new FormData();
+  form.append("call", call);
+  form.append("band", band);
+  form.append("mode", mode);
+  form.append("freq", freq);
+  form.append("rst_sent", rst_sent);
+  form.append("rst_rcvd", rst_rcvd);
+
+  // You must already have these two fields in your form:
+  // f.qso_date → YYYY-MM-DD
+  // f.qso_time → HH:MM
+/* if (!f.qso_date) { alert("Missing QSO date."); return; }
+if (!f.qso_time) { alert("Missing QSO time."); return; } */
+
+
+// Build current UTC date/time for QRZ
+const now = new Date();
+
+// YYYYMMDD
+const qso_date = now.toISOString().slice(0,10).replace(/-/g, "");
+
+// HHMM (UTC)
+const time_on = now.toISOString().slice(11,16).replace(":", "");
+
+// Add to form
+form.append("qso_date", qso_date);
+form.append("time_on", time_on);
+
+
+  // Your station callsign
+  form.append("station_callsign", "W5ALI");
+
+  try {
+    const r = await fetch(`${API}/api/qrz/insert`, {
+      method: "POST",
+      body: form   // ← IMPORTANT
+    });
+
+    if (!r.ok) {
+      const msg = await r.text().catch(()=> '');
+      throw new Error(`QRZ insert failed (${r.status}) ${msg}`);
+    }
+  } catch (e) {
+    console.error("QRZ log failed:", e);
+    alert("QRZ log failed (see console).");
+    return;
+  }
+
+  // UI feedback
+  const btn = qs('saveBtn'); 
+  const label = btn.textContent;
+  btn.textContent = "Saved ✓"; btn.disabled = true;
+  setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
+};
+
+
+    })();
+</script>
+<script>
+  const QRZ_LOOKUP_ENDPOINT = '/qrz/lookup';
+</script>
+<script>
+// QRS LOOKUP WITH DROP DOWN--- Config: point this to your existing QRZ search endpoint ---
+// Expect it to return: [{ call: "W5AL", name: "Roger Barkley" }, ...]
+ // --- endpoints (top of file) ---
+
+
+
+
+/* const QRZ_LOOKUP_ENDPOINT  = `${API}/qrz/lookup`; // existing */
+const QRZ_SUGGEST_ENDPOINT = `${API}/suggest`;      // your proxy route
+
+
+
+function debounce(fn, delay=200) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(()=>fn(...args), delay); };
+}
+
+
+
+class CallsignAutocomplete {
+  constructor(inputEl, listEl, opts = {}) {
+    this.input = inputEl;
+    this.list = listEl;
+    this.minChars = opts.minChars ?? 2;
+    this.maxResults = opts.maxResults ?? 12;
+    this.items = [];
+    this.activeIndex = -1;
+    this.ctrl = null;
+
+    // ARIA base
+    this.input.setAttribute('role', 'combobox');
+    this.input.setAttribute('aria-autocomplete', 'list');
+    this.input.setAttribute('aria-expanded', 'false');
+    this.list.setAttribute('role', 'listbox');
+
+    // Wire events
+    this.input.addEventListener('input', () => this.onInput());
+    this.input.addEventListener('keydown', (e) => this.onKeyDown(e));
+    document.addEventListener('click', (e) => {
+      if (!this.list.contains(e.target) && e.target !== this.input) this.hide();
+    });
+  }
+
+  async onInput() {
+    const q = this.input.value.trim().toUpperCase();
+    if (q.length < this.minChars) { this.hide(); return; }
+
+    // cancel prior request
+    if (this.ctrl) this.ctrl.abort();
+    this.ctrl = new AbortController();
+
+    try {
+      const url = `${API}/api/qrz/lookup?call=${q}`;
+  /*     const url = new URL('/api/qrz/lookup', window.location.origin); */
+  /*     url.searchParams.set('call', q); */
+    /*   url.searchParams.set('limit', this.maxResults); */
+
+      const res = await fetch(url.toString(), {
+        headers: { "Accept": "application/json" },
+        cache: 'no-store',
+        signal: this.ctrl.signal
+      });
+      if (!res.ok) throw new Error(`Suggest failed: ${res.status}`);
+
+        const data = await res.json();
+
+      // Backend returns a single object, so wrap it into an array:
+      const arr = Array.isArray(data) ? data : [data];
+
+      // Map into autocomplete items
+      const items = arr.map(r => ({
+        call: r.call || r.CALL || r.callsign || "",
+        name: r.name || r.NAME || r.fullname || r.op || ""
+      })).filter(r => r.call);
+
+      const refined = items
+        .filter(r => r.call.startsWith(q))
+        .slice(0, this.maxResults);
+
+      this.render(refined);
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error(err);
+      /* this.hide(); */
+    }
+  }
+
+  render(items) {
+    this.items = items;
+    this.activeIndex = -1;
+    this.list.innerHTML = "";
+    if (!items.length) { this.hide(); return; }
+
+    items.forEach((it, idx) => {
+      const div = document.createElement('div');
+      div.className = 'ac-item';
+      div.setAttribute('role', 'option');
+      div.setAttribute('id', `ac-opt-${idx}`);
+      div.innerHTML =
+        `<span class="ac-call">${it.call}</span><span class="ac-name">${it.name || ""}</span>`;
+      // mousedown avoids blur-before-click
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.select(idx);
+      });
+      this.list.appendChild(div);
+    });
+
+    this.list.style.display = 'block';
+    this.input.setAttribute('aria-expanded', 'true');
+    this.input.setAttribute('aria-controls', this.list.id);
+  }
+
+  onKeyDown(e) {
+    if (this.list.style.display !== 'block') return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.move(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.move(-1);
+    } else if (e.key === 'Enter') {
+      if (this.activeIndex >= 0) {
+        e.preventDefault();
+        this.select(this.activeIndex);
+      }
+    } else if (e.key === 'Escape') {
+      this.hide();
+    }
+  }
+
+  move(delta) {
+    const count = this.items.length;
+    if (!count) return;
+    this.activeIndex = (this.activeIndex + delta + count) % count;
+    [...this.list.children].forEach((el, i) => {
+      el.setAttribute('aria-selected', i === this.activeIndex ? 'true' : 'false');
+      if (i === this.activeIndex) el.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  async select(index) {
+    const item = this.items[index];
+    if (!item) return;
+
+    this.input.value = item.call;
+    this.hide();
+
+    try {
+      const r = await fetch(
+        `${QRZ_LOOKUP_ENDPOINT}?call=${encodeURIComponent(item.call)}`,
+        { cache: 'no-store' }
+      );
+      if (!r.ok) throw new Error('QRZ lookup failed');
+      const detail = await r.json();
+
+      this.input.dispatchEvent(new CustomEvent('callsignSelected', {
+        bubbles: true,
+        detail: {
+          call: item.call,
+          name: item.name || detail.name || detail.NAME || "",
+          raw: detail
+        }
+      }));
+    } catch (e) {
+      console.error(e);
+      this.input.dispatchEvent(new CustomEvent('callsignSelected', {
+        bubbles: true,
+        detail: { call: item.call, name: item.name || "" }
+      }));
+    }
+  }
+
+  hide() {
+    this.list.style.display = 'none';
+    this.input.setAttribute('aria-expanded', 'false');
+    this.list.innerHTML = '';
+    this.items = [];
+    this.activeIndex = -1;
+  }
+}
+
+
+
+// Initialize
+/* window.addEventListener('DOMContentLoaded', () => {
+  const ac = new CallsignAutocomplete(
+    document.getElementById('callsign'),
+    document.getElementById('callsign-list'),
+    { minChars: 2, maxResults: 12 }
+  );
+
+  // Example: listen for selection to fill a separate "Operator" field
+  document.getElementById('callsign').addEventListener('callsignSelected', (e) => {
+    const { name, call } = e.detail;
+    // If you have a separate "Name/Op" input:
+    const opField = document.querySelector('#operator');
+    if (opField && name) opField.value = name;
+    // You could also trigger a detailed QRZ lookup here using the chosen call:
+    // fetch(`/api/qrz/detail?call=${encodeURIComponent(call)}`)
+  });
+}); */
+
+// Initialize autocomplete using the REAL element IDs in your HTML
+window.addEventListener('DOMContentLoaded', () => {
+  const ac = new CallsignAutocomplete(
+    document.getElementById('cs'),           // correct callsign input
+    document.getElementById('call-suggest'), // correct list container
+    { minChars: 2, maxResults: 12 }
+  );
+
+  document.getElementById('cs').addEventListener('callsignSelected', (e) => {
+    const { name, call } = e.detail;
+    const opField = document.querySelector('#operator');
+    if (opField && name) opField.value = name;
+  });
+    function updateUtcClock() {
+    const el = document.getElementById("utcClock");
+    if (!el) return;
+
+    const now = new Date();
+    const hh = now.getUTCHours().toString().padStart(2, "0");
+    const mm = now.getUTCMinutes().toString().padStart(2, "0");
+    const ss = now.getUTCSeconds().toString().padStart(2, "0");
+
+    el.textContent = `UTC ${hh}:${mm}:${ss}`;
+  }
+
+  setInterval(updateUtcClock, 1000);
+  updateUtcClock();
+
+
+  const potaBtn = document.getElementById('potaSyncBtn');
+  const potaStatus = document.getElementById('potaSyncStatus');
+
+  if (potaBtn) {
+    potaBtn.addEventListener('click', async () => {
+      potaBtn.disabled = true;
+      const originalText = potaBtn.textContent;
+      potaBtn.textContent = 'Syncing...';
+      potaStatus.textContent = '';
+
+      try {
+        const res = await fetch(`${API}/api/pota/sync`, {
+          method: 'POST'
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (data.ok) {
+          potaStatus.textContent = `Synced ${data.count || 0} POTA QSOs to QRZ.`;
+           refreshPotaLastSync(); 
+        } else {
+          potaStatus.textContent = data.detail || 'No POTA QSOs synced.';
+        }
+      } catch (e) {
+        console.error('POTA sync failed', e);
+        potaStatus.textContent = 'POTA sync failed: ' + e.message;
+      } finally {
+        potaBtn.disabled = false;
+        potaBtn.textContent = originalText;
+      }
+    });
+  }
+// ----- POTA Last Sync Display -----
+async function refreshPotaLastSync() {
+  const el = document.getElementById('potaLastSync');
+  if (!el) return;
+  try {
+    const res = await fetch(`${API}/api/pota/last_sync`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+
+    if (!data.last_sync) {
+      el.textContent = "Last POTA sync: never";
+      return;
+    }
+
+    // Format YYYYMMDDHHMMSS → readable time
+    const ts = data.last_sync;
+    const pretty = `${ts.substring(0,4)}-${ts.substring(4,6)}-${ts.substring(6,8)} `
+                 + `${ts.substring(8,10)}:${ts.substring(10,12)}:${ts.substring(12,14)} UTC`;
+
+    el.textContent = `Last POTA sync: ${pretty}`;
+  } catch (e) {
+    console.error("Failed to load last sync", e);
+  }
+}
+
+// Call once on page load
+refreshPotaLastSync();
+
+document.getElementById('potaPasteSyncBtn').onclick = async () => {
+  const ta = document.getElementById('potaPaste');
+  const status = document.getElementById('potaPasteStatus');
+  const txt = ta.value.trim();
+  if (!txt) {
+    status.textContent = "Paste some log data first!";
+    return;
+  }
+  status.textContent = "Parsing...";
+
+  // Split into lines and find lines that are not just 'Hunter'
+  let lines = txt.split('\n').map(l => l.trim()).filter(l => l && l !== "Hunter");
+
+  // Detect delimiter (tab or spaces)
+  let delimiter = '\t';
+  if (lines[0].indexOf('\t') === -1 && lines[0].indexOf('  ') > -1) delimiter = /  +/;
+
+  // Parse each line into fields
+  let qsos = [];
+  for (let line of lines) {
+    // Skip header lines
+    if (line.toLowerCase().startsWith("date") || line.toLowerCase().startsWith("hunter")) continue;
+
+    let fields = line.split(delimiter);
+    // Defensive: Only process if at least 7 fields (date, activator, operator, ... etc)
+    if (fields.length < 7) continue;
+    qsos.push({
+      "date_time": fields[0],        // e.g. "2025-11-27 18:06"
+      "activator_call": fields[1],   // e.g. "KO4KAD"
+      "operator_call": fields[3],    // e.g. "W5ALI"
+      "band": fields[4],             // e.g. "20M"
+      "mode": fields[5],             // e.g. "PHONE (SSB)"
+      "state": fields[6],            // e.g. "US-VA"
+      "park_info": fields[7] || ""   // e.g. "US-9935 Virginia Bird & Wildlife State Trail"
+    });
+  }
+
+  if (!qsos.length) {
+    status.textContent = "No valid rows detected!";
+    return;
+  }
+
+  status.textContent = "Uploading to QRZ...";
+  try {
+    const res = await fetch(`${API}/api/pota/paste_sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ qsos })
+    });
+    const out = await res.json();
+    if (out.ok) {
+      status.textContent = `Synced ${out.count} QSOs to QRZ!`;
+    } else {
+      status.textContent = "Upload failed: " + (out.detail || "Unknown error");
+    }
+  } catch (e) {
+    status.textContent = "Sync failed: " + e.message;
+  }
+};
+
+
+
+});
+
+ 
+
+
+</script>
+
+
+<script>
+(async function qrzPing(){
+  try{
+    const el = document.getElementById('qrzStatus');
+    const r = await fetch(`${API}/qrz/ping`);
+    if (r.ok) { el.textContent = 'connected'; el.style.color = '#6ee7a8'; }
+    else { el.textContent = 'unavailable'; el.style.color = '#fca5a5'; }
+  }catch(e){
+    const el = document.getElementById('qrzStatus'); if (el){ el.textContent = 'offline'; el.style.color = '#fca5a5'; }
+  }
+})();
+</script>
+
+
+<script>
+// Auto-log to QRZ when POTA pane posts a hunted event
+window.addEventListener('message', (e)=>{
+  const msg = e.data || {};
+  if (msg.type !== 'pota:hunted') return;
+console.log("🎯 Received pota:hunted message:", msg.data);
+  const d = msg.data || {};
+  if (!d.callsign || !d.freq_mhz) {
+    console.warn('Missing callsign/freq in pota:hunted');
+    return;
+  }
+
+  const qs = (id) => document.getElementById(id);
+  const freq_mhz = String(d.freq_mhz || '');
+  const fHz = parseFloat(freq_mhz) * 1e6;
+
+  // 1. Autofill logging form
+  qs('cs').value = d.callsign || '';
+  qs('mode').value = (d.mode || '').toUpperCase();
+  qs('freq').value = freq_mhz;
+
+  // Try to autofill band from freq
+  const f = parseFloat(freq_mhz);
+  const b =
+    f >= 1.8   && f < 2.0   ? "160m" :
+    f >= 3.5   && f < 4.0   ? "80m"  :
+    f >= 5.0   && f < 5.5   ? "60m"  :
+    f >= 7.0   && f < 7.3   ? "40m"  :
+    f >= 10.1  && f < 10.15 ? "30m"  :
+    f >= 14.0  && f < 14.35 ? "20m"  :
+    f >= 18.068&& f < 18.168? "17m"  :
+    f >= 21.0  && f < 21.45 ? "15m"  :
+    f >= 24.89 && f < 24.99 ? "12m"  :
+    f >= 28.0  && f < 29.7  ? "10m"  :
+    f >= 50.0  && f < 54.0  ? "6m"   :
+    f >= 144.0 && f < 148.0 ? "2m"   :
+    f >= 420.0 && f < 450.0 ? "70cm" : "";
+  if (b) qs('band').value = b;
+
+  // Optional: set a comment or notes field with park name/code
+  const parkField = qs('notes') || qs('comment') || null;
+  if (parkField && d.park) {
+    parkField.value = `POTA ${d.park}`;
+  }
+
+  // Optional: focus the form panel
+  const form = document.getElementById('qsoForm');
+  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+</script>
+
+
+<script>
+// --- Harden the right column against accidental overlays ---
+(function ensureClicksReachSpotsSide(){
+  const side = document.getElementById('spotsSide');
+  if (!side) return;
+  // Make sure nothing from the waterfall overlaps this column
+  side.style.position = 'relative';
+  side.style.zIndex = 20;
+  side.style.pointerEvents = 'auto';
+})();
+
+// --- Helpers ---
+function recenterTo(freqHz){
+  if (!Number.isFinite(freqHz) || freqHz <= 0) return;
+  // Use the same center label element your page already has
+  // (Header shows "Center: <span id='spotsCenter'>…</span>")  :contentReference[oaicite:0]{index=0}
+  window.centerHz = Math.round(freqHz);
+  const el = document.getElementById('spotsCenter');
+  if (el) el.textContent = (window.centerHz/1e6).toFixed(5) + ' MHz';
+  // These functions exist in your Waterfall block; call them if present.  :contentReference[oaicite:1]{index=1}
+  if (typeof window.updateSpectrum === 'function') window.updateSpectrum();
+  if (typeof window.applySpotFilters === 'function') window.applySpotFilters();
+}
+
+// --- One delegated handler to rule them all ---
+document.addEventListener('click', (e) => {
+  // If you click the MHz link, recenter (and don't tune)
+  const anchor = e.target.closest('a.spot-recenter');
+  if (anchor) {
+    e.preventDefault();
+    e.stopPropagation();
+    const f = Number(anchor.dataset.freq);
+    console.log('[spots] recenter click', f);
+    recenterTo(f);
+    return;
+  }
+
+  // If you click anywhere inside a Spots list row, tune the rig
+  const row = e.target.closest('#spotsList li');
+  if (row) {
+    const f = Number(row.dataset.freq || row.querySelector('a.spot-recenter')?.dataset.freq);
+    console.log('[spots] tune row click', f);
+    if (Number.isFinite(f) && f > 0) {
+      // Use your existing API base. It's declared near the top of the file.  :contentReference[oaicite:2]{index=2}
+      fetch(`${API}/rig/tune`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ freq_hz: Math.round(f) })
+      }).catch(()=>{});
+    }
+    return;
+  }
+});
+
+// --- Make sure each <li> carries its frequency so clicks have data ---
+(function patchRenderSpotList(){
+  const UL = document.getElementById('spotsList');
+  if (!UL) return;
+
+  // Whenever the list content changes, tag each li with data-freq.
+  const tagRows = () => {
+    UL.querySelectorAll('li').forEach(li => {
+      const a = li.querySelector('a.spot-recenter');
+      const f = Number(a?.dataset.freq);
+      if (Number.isFinite(f) && f > 0) li.dataset.freq = String(Math.round(f));
+    });
+  };
+
+  // Run now for current content, and observe for future re-renders.
+  tagRows();
+  const mo = new MutationObserver(tagRows);
+  mo.observe(UL, { childList:true, subtree:true });
+})();
+</script>
+
+<script>
+// ---- Settings state & persistence ----
+(function(){
+  const KEY = 'ham3panel-settings-v1';
+  const defaults = { mhzClickTunes: false };
+
+  function load(){
+    try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY)||'{}')); }
+    catch { return { ...defaults }; }
+  }
+  function save(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+
+  // expose minimal global for other modules to check
+  window.HAM = window.HAM || {};
+  const state = window.HAM.settings = load();
+
+  // init checkbox UI
+  const cb = document.getElementById('set_mhz_tunes');
+  if (cb){
+    cb.checked = !!state.mhzClickTunes;
+    cb.addEventListener('change', ()=>{
+      state.mhzClickTunes = !!cb.checked;
+      save(state);
+    });
+  }
+
+  // Patch the Spots MHz click so it can optionally tune
+  // Find the existing MHz click hook and augment it safely:
+  const UL = document.getElementById('spotsList');
+
+  // Delegate: watch for .spot-mhz clicks
+  if (UL){
+    UL.addEventListener('click', (e)=>{
+      const el = e.target.closest('.spot-mhz');
+      if (!el) return;              // not a MHz click
+      // existing behavior: recenter view (already handled where you add the listener)
+      // we keep that behavior; we only add optional tune below:
+      if (!window.HAM?.settings?.mhzClickTunes) return;
+
+      const f = Number(el.dataset.freq);
+      if (Number.isFinite(f) && f > 0){
+        fetch(`${API}/rig/tune`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ freq_hz: Math.round(f) })
+        }).catch(()=>{});
+      }
+    }, true); // capture so we run even if other handlers stop propagation
+  }
+})();
+</script>
+
+
+</body>
+</html>
