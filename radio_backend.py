@@ -770,7 +770,7 @@ app = web.Application()
 app.add_routes(routes)
 
 # Serve the dashboard under /ui (after API routes to avoid shadowing)
-UI_DIR = Path('/Users/aw/documents/hobbies/ham/ham-ui/')  # contains ham-dashboard.html
+UI_DIR = Path('https://hamdash-ai.onrender.com')  # contains ham-dashboard.html
 app.router.add_static('/ui', path=str(UI_DIR), show_index=True)
 
 # Initialize state used by /api/rig/center_freq
