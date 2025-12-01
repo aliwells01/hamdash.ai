@@ -765,16 +765,7 @@ app = web.Application(middlewares=[cors_mw])
 # CORS preflight for everything
 app.router.add_route('OPTIONS', '/{tail:.*}', lambda r: web.Response(status=204))
 
-# Register ALL API routes (this was missing)
-app = web.Application()
-app.add_routes(routes)
 
-# Serve the dashboard under /ui (after API routes to avoid shadowing)
-UI_DIR = Path('https://hamdash-ai.onrender.com')  # contains ham-dashboard.html
-app.router.add_static('/ui', path=str(UI_DIR), show_index=True)
-
-# Initialize state used by /api/rig/center_freq
-app["center_hz"] = int(os.environ.get("CENTER_HZ", "14230000"))
 
 
 
