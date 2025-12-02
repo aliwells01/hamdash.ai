@@ -1036,7 +1036,7 @@ spc.stroke();
   async function refreshSpots(){
     if (!UL) return;
     try{
-      const r  = await fetch(`${API}/spots`, { cache:'no-store' });
+      const r  = await fetch(`${API}/api/spots`, { cache:'no-store' });
       const ct = (r.headers.get('content-type') || '').toLowerCase();
       if (!ct.includes('application/json')) {
         const t = await r.text();
