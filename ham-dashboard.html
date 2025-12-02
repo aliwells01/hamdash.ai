@@ -1129,9 +1129,7 @@ spc.stroke();
         // Callsign → logger + trigger QRZ lookup
         if (qs('cs')) {
           qs('cs').value = cs;
-          setTimeout(() => {
           qs('cs').dispatchEvent(new Event('input', { bubbles: true }));
-          }, 50);  // 50ms is usually enough
 
         }
 
@@ -1719,10 +1717,18 @@ console.log("🎯 Received pota:hunted message:", msg.data);
   const freq_mhz = String(d.freq_mhz || '');
   const fHz = parseFloat(freq_mhz) * 1e6;
 
-  // 1. Autofill logging form
+
+    // 1. Autofill logging form
   qs('cs').value = d.callsign || '';
   qs('mode').value = (d.mode || '').toUpperCase();
   qs('freq').value = freq_mhz;
+  // Trigger QRZ search/autocomplete
+  setTimeout(() => {
+    qs('cs').dispatchEvent(new Event('input', { bubbles: true }));
+    if (window.loggerAutocomplete && typeof window.loggerAutocomplete.onInput === 'function') {
+      window.loggerAutocomplete.onInput();
+    }
+  }, 20);
 
   // Try to autofill band from freq
   const f = parseFloat(freq_mhz);
@@ -1749,8 +1755,8 @@ console.log("🎯 Received pota:hunted message:", msg.data);
   }
 
   // Optional: focus the form panel
-  const form = document.getElementById('qsoForm');
-  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+/*   const form = document.getElementById('qsoForm');
+  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' }); */
 });
 
 </script>
