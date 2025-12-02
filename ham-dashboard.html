@@ -384,9 +384,9 @@
        
       </div>
 
-      <div class="spotsCtrls" style="display:flex; flex-direction:column;align-items: center;margin-left: auto; margin-right: auto;">
+  <div class="spotsCtrls" style="display:flex; flex-direction:column;align-items: center;margin-left: auto; margin-right: auto;">
        
-        
+        <br></br>
         <div class="snr-badge" id="utcClock" style="font-size:20px; vertical-align: middle;"></div>
 
 
@@ -1421,7 +1421,7 @@ class CallsignAutocomplete {
       div.setAttribute('role', 'option');
       div.setAttribute('id', `ac-opt-${idx}`);
       div.innerHTML =
-        `<span class="ac-call">${it.call}</span><span class="ac-name">${it.name || ""}</span>`;
+        `<span class="ac-call">${it.name}</span><span class="ac-name">${it.state || ""}</span>`;
       // mousedown avoids blur-before-click
       div.addEventListener('mousedown', (e) => {
         e.preventDefault();
