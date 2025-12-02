@@ -328,6 +328,92 @@ async def api_spots(req):
 import asyncio, math
 from aiohttp import web
 
+def load_spots():
+    """
+    FastAPI-compatible version of the old aiohttp /api/spots route.
+    Returns: list of spot dicts.
+    """
+    import os, sqlite3, time, traceback
+
+    DB_PATH = os.environ.get("SPOTS_DB")
+    TABLE   = os.environ.get("SPOTS_TABLE", "spots")
+
+    def demo_list():
+        return [
+            {"freq":14230000,"mode":"USB","callsign":"W4ABC","program":"POTA K-1234","snr":12.3,"age":5,"worked":False},
+            {"freq":14074000,"mode":"FT8","callsign":"K1XYZ","program":"SOTA W1/HA-001","snr":7.5,"age":10,"worked":True},
+            {"freq": 7055000,"mode":"LSB","callsign":"N0CALL","program":"DX: Spain","snr":18.0,"age":1,"worked":False},
+        ]
+
+    try:
+        if not DB_PATH or not os.path.exists(DB_PATH):
+            print(f"[load_spots] DB missing or not set: {DB_PATH!r} -> demo")
+            return demo_list()
+
+        con = sqlite3.connect(DB_PATH)
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
+
+        sql = f"""
+          SELECT
+            COALESCE(NULLIF(call,''), NULLIF(tx_call,''), NULLIF(rx_call,'')) AS callsign,
+            CAST(freq_mhz * 1e6 AS INTEGER)                                   AS freq,
+            COALESCE(NULLIF(mode,''), NULLIF(mode_raw,''), '')                AS mode,
+            COALESCE(NULLIF(comment,''), NULLIF(source,''), '')               AS program,
+            COALESCE(p533_rx_snr, p533_tx_snr, 0)                             AS snr,
+            ts                                                                AS ts
+          FROM "{TABLE}"
+          WHERE freq_mhz BETWEEN 0.5 AND 60.0
+          ORDER BY ts DESC
+          LIMIT 500;
+        """
+        cur.execute(sql)
+        rows = [dict(r) for r in cur.fetchall()]
+        con.close()
+
+        if not rows:
+            return demo_list()
+
+        now = time.time()
+        out = []
+        for r in rows:
+            cs = (r.get("callsign") or "").strip().upper()
+            if not cs:
+                continue
+
+            # age in minutes
+            age_min = 0
+            ts = r.get("ts")
+            if ts not in (None, ""):
+                try:
+                    age_min = max(0, int((now - float(ts)) / 60))
+                except:
+                    try:
+                        import datetime
+                        dt = datetime.datetime.fromisoformat(str(ts).replace("Z","").split(".")[0])
+                        age_min = max(0, int((datetime.datetime.utcnow() - dt).total_seconds()/60))
+                    except:
+                        age_min = 0
+
+            out.append({
+                "callsign": cs,
+                "freq": int(r.get("freq") or 0),
+                "mode": r.get("mode") or "",
+                "program": r.get("program") or "",
+                "snr": float(r.get("snr") or 0),
+                "age": age_min,
+                "worked": False,
+            })
+
+        return out
+
+    except Exception as e:
+        traceback.print_exc()
+        return {"error": "spots_query_failed", "detail": str(e)}
+
+
+
+
 
 @routes.get("/ws/fft")
 async def ws_fft(req):
