@@ -1129,7 +1129,9 @@ spc.stroke();
         // Callsign → logger + trigger QRZ lookup
         if (qs('cs')) {
           qs('cs').value = cs;
+          setTimeout(() => {
           qs('cs').dispatchEvent(new Event('input', { bubbles: true }));
+          }, 50);  // 50ms is usually enough
 
         }
 
