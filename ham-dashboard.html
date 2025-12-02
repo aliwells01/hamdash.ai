@@ -1394,7 +1394,7 @@ class CallsignAutocomplete {
       // Map into autocomplete items
       const items = arr.map(r => ({
         call: r.call || r.CALL || r.callsign || "",
-        name: r.name || r.NAME || r.fullname || r.op || ""
+        name: r.name || r.NAME || r.fullname || r.op || "",
         state: r.state || r.STATE || r.us_state || ""
       })).filter(r => r.call);
 
@@ -1421,7 +1421,7 @@ class CallsignAutocomplete {
       div.setAttribute('role', 'option');
       div.setAttribute('id', `ac-opt-${idx}`);
       div.innerHTML =
-        `<span class="ac-call">${it.name}</span><span class="ac-name">${it.state || ""}</span>`;
+        `<span class="ac-call">${it.call}</span><span class="ac-name">${it.name || ""}</span>`;
       // mousedown avoids blur-before-click
       div.addEventListener('mousedown', (e) => {
         e.preventDefault();
