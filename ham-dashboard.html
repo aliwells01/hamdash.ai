@@ -1130,8 +1130,9 @@ spc.stroke();
         if (qs('cs')) {
           qs('cs').value = cs;
           qs('cs').dispatchEvent(new Event('input', { bubbles: true }));
-        }
+
         console.log("Dispatched input after hunted set");
+        }
 
         // Standard logger fields
         if (qs('mode')) qs('mode').value = md || 'SSB';
