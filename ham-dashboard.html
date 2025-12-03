@@ -1780,8 +1780,9 @@ function recenterTo(freqHz){
   // (Header shows "Center: <span id='spotsCenter'>…</span>")  :contentReference[oaicite:0]{index=0}
   window.centerHz = Math.round(freqHz);
   const el = document.getElementById('spotsCenter');
+   document.getElementById('freq').value = el;
   if (el) el.textContent = (window.centerHz/1e6).toFixed(5) + ' MHz';
-  document.getElementById('freq').value = el;
+ 
   // These functions exist in your Waterfall block; call them if present.  :contentReference[oaicite:1]{index=1}
   if (typeof window.updateSpectrum === 'function') window.updateSpectrum();
   if (typeof window.applySpotFilters === 'function') window.applySpotFilters();
