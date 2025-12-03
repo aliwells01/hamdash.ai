@@ -1786,9 +1786,9 @@ function recenterTo(freqHz){
 
   // ✅ Only set logger frequency if it's currently empty
   const freqField = document.getElementById('freq');
-  if (freqField && !freqField.value) {
+
     freqField.value = (window.centerHz/1e6).toFixed(5);
-  }
+  
 
 
   // These functions exist in your Waterfall block; call them if present.  :contentReference[oaicite:1]{index=1}
