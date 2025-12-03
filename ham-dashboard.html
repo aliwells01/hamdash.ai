@@ -1787,7 +1787,7 @@ function recenterTo(freqHz){
   // ✅ Only set logger frequency if it's currently empty
   const freqField = document.getElementById('freq');
 
-    freqField.value = (window.centerHz/1e6).toFixed(5);
+if (freqField) freqField.value = (window.centerHz/1e6).toFixed(5);
   
 if (freqField) {
   freqField.placeholder = (window.centerHz/1e6).toFixed(5);
