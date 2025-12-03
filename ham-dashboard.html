@@ -1789,7 +1789,9 @@ function recenterTo(freqHz){
 
     freqField.value = (window.centerHz/1e6).toFixed(5);
   
-
+if (freqField) {
+  freqField.placeholder = (window.centerHz/1e6).toFixed(5);
+}
 
   // These functions exist in your Waterfall block; call them if present.  :contentReference[oaicite:1]{index=1}
   if (typeof window.updateSpectrum === 'function') window.updateSpectrum();
