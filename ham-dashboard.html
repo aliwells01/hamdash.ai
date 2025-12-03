@@ -1788,6 +1788,7 @@ function recenterTo(freqHz){
   const freqField = document.getElementById('freq');
 
 if (freqField) freqField.value = (window.centerHz/1e6).toFixed(5);
+  qs('freq').value = freq_mhz;
   
 if (freqField) {
   freqField.placeholder = (window.centerHz/1e6).toFixed(5);
