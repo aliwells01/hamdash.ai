@@ -45,7 +45,18 @@ async def api_qrz_lookup(call: str):
         return await qrz_app.qrz_lookup_call(call)
     except Exception as e:
         return {"error": f"QRZ lookup failed: {e}"}
-
+# -----------------------------------------------------------
+# QRZ insert
+# -----------------------------------------------------------
+@app.get("/api/qrz/insert")
+async def api_qrz_insert():
+    """
+    insert a callsign using app.py's QRZ XML API logic.
+    """
+    try:
+        return await qrz_app.qrz_insert()
+    except Exception as e:
+        return {"error": f"Insert lookup failed: {e}"}
 # -----------------------------------------------------------
 # POTA PASTE SYNC
 # -----------------------------------------------------------
