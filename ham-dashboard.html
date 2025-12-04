@@ -375,7 +375,32 @@
           <div class="bottom-split"> -->
 
 
+<div id="centerColumn" style="flex:1; min-width:0; display:flex; flex-direction:column; gap:12px;">
+    <section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
+        
+      <div class="spotsCtrls">
+       
+        <span>Center: <span id="spotsCenter" style="font-size:20px;  cursor:pointer;" title="Click to copy to logger"></span></span>
+       
+      </div>
 
+        
+        <div class="snr-badge" id="utcClock" style="font-size:20px; vertical-align: middle;"></div>
+
+
+
+
+<div style="margin-top:7em; ">
+  <label><b>POTA Hunter Log Paste  </b><button id="potaPasteSyncBtn" type="button">Sync</button>
+    <textarea id="potaPaste" rows="2" style="width:100%" placeholder="Paste your POTA hunter log here..."></textarea>
+ 
+   </label>
+  <span id="potaPasteStatus" style="margin-left:1em; color:#555"></span>
+</div>
+
+
+
+    </section>
   <section class="pane" id="logger-bottom" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
     
     <!-- Left: existing logger (slightly narrower now) -->
@@ -497,36 +522,8 @@
           </div>
       </section>
 
-
-      <div id="centerColumn" style="flex:1; min-width:0; display:flex; flex-direction:column; gap:12px;">
-    <section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
-        
-      <div class="spotsCtrls">
-       
-        <span>Center: <span id="spotsCenter" style="font-size:20px;  cursor:pointer;" title="Click to copy to logger"></span></span>
-       
-      </div>
-
-        
-        <div class="snr-badge" id="utcClock" style="font-size:20px; vertical-align: middle;"></div>
-
-
-
-
-<div style="margin-top:7em; ">
-  <label><b>POTA Hunter Log Paste  </b><button id="potaPasteSyncBtn" type="button">Sync</button>
-    <textarea id="potaPaste" rows="2" style="width:100%" placeholder="Paste your POTA hunter log here..."></textarea>
- 
-   </label>
-  <span id="potaPasteStatus" style="margin-left:1em; color:#555"></span>
-</div>
-
-
-
-    </section>
-
       <!-- RIGHT: Spots list (1/3 width) -->
-      <section class="pane" id="pane-spots" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column;">
+      <section class="pane" id="pane-spots" style="flex:0.5; padding:10px; min-width:0; display:flex; flex-direction:column;">
 
           <div class="spotsHeader">
               <b>Spots</b>
