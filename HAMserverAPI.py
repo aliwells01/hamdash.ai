@@ -26,6 +26,9 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# Register the QRZ router
+app.include_router(qrz_app.router)
+
 # -----------------------------------------------------------
 # STATUS CHECK
 # -----------------------------------------------------------
