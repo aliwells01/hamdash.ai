@@ -1246,7 +1246,7 @@ qs('saveBtn').onclick = async () => {
   // Normalize / prep values
   const call = String(f.callsign || '').toUpperCase();
   const freq = String(f.freq_mhz || '');
-  const band = f.band || '';
+  const band = String(f.band || '');
   const mode = f.mode?.toUpperCase() || 'SSB';
   const rst_sent = f.rst_s || '59';
   const rst_rcvd = f.rst_r || '59';
