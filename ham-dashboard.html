@@ -412,84 +412,82 @@
           #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
         </style>
 
-<!-- Top line: Callsign (left) + QRZ dropdown (right) -->
-<div class="cs-row">
-  <div class="cs-cell">
-    <label>Enter Callsign</label>
-    <input id="cs" class="fld" placeholder="Start typing.." required autocomplete="off">
-  </div>
-  <div class="qrz-cell">
-     <label>Suggestion...</label>
-    <!-- your existing suggestion/lookup dropdown goes here -->
-    <div id="whois" class="hint" style="display:none"></div>
-    <div class="hint" style="display:none"></div>
-    <div id="call-suggest" class="suggest-box"></div>
-  </div>
-</div>
-
-<!-- Next lines: the rest of the inputs -->
-<div class="grid">
-  <div class="grid-item">
-    <label>RST Sent</label>
-    <input id="rstS" class="fld" value="59">
-  </div>
-
-  <div class="grid-item">
-    <label>RST Rcvd</label>
-    <input id="rstR" class="fld" value="59">
-  </div>
-
-  <div class="grid-item">
-    <label>Frequency</label>
-    <input id="freq" class="fld" placeholder="MHz">
-  </div>
-
-  <div class="grid-item">
-    <label>Band</label>
-    <select id="band" class="fld">
-     <option value="">20m</option>
-      <option>160m</option><option>80m</option><option>60m</option><option>40m</option>
-      <option>30m</option><option>17m</option><option>15m</option>
-      <option>12m</option><option>10m</option><option>6m</option><option>2m</option>
-      <option>70cm</option>
-    </select>
-  </div>
-
-  <div class="grid-item">
-    <label>Mode</label>
-    <select id="mode" class="fld">
-      <option value="">SSB</option>
-      <option>LSB</option><option>USB</option><option>AM</option><option>FM</option>
-      <option>CW</option><option>FT8</option><option>FT4</option><option>RTTY</option><option>PSK31</option>
-    </select>
-  </div>
-</div>
-
-<!-- Buttons row (unchanged) -->
-<div class="row">
-  <div style="display:flex; gap:10px; align-items:flex-end;">
-    <button id="saveBtn" class="btn primary" type="button">Log Contact</button>
-    <button id="clearBtn" class="btn" type="button">Clear</button>
-  </div>
-</div>
-
-
-
-
-
-    <!-- Right: settings column -->
-    <aside class="settings-card">
-      <h3>Settings</h3>
-      <div class="settings-row">
-        <input type="checkbox" id="set_mhz_tunes" />
-        <label for="set_mhz_tunes">MHz click also tunes rig (CAT)</label>
-      </div>
-    </aside>
-  </div>
-
+          <!-- Top line: Callsign (left) + QRZ dropdown (right) -->
+          <div class="cs-row">
+            <div class="cs-cell">
+              <label>Enter Callsign</label>
+              <input id="cs" class="fld" placeholder="Start typing.." required autocomplete="off">
+            </div>
+            <div class="qrz-cell">
+              <label>Suggestion...</label>
+              <!-- your existing suggestion/lookup dropdown goes here -->
+              <div id="whois" class="hint" style="display:none"></div>
+              <div class="hint" style="display:none"></div>
+              <div id="call-suggest" class="suggest-box"></div>
+            </div>
           </div>
-</section>
 
+          <!-- Next lines: the rest of the inputs -->
+          <div class="grid">
+            <div class="grid-item">
+              <label>RST Sent</label>
+              <input id="rstS" class="fld" value="59">
+            </div>
+
+            <div class="grid-item">
+              <label>RST Rcvd</label>
+              <input id="rstR" class="fld" value="59">
+            </div>
+
+            <div class="grid-item">
+              <label>Frequency</label>
+              <input id="freq" class="fld" placeholder="MHz">
+            </div>
+
+            <div class="grid-item">
+              <label>Band</label>
+              <select id="band" class="fld">
+              <option value="">20m</option>
+                <option>160m</option><option>80m</option><option>60m</option><option>40m</option>
+                <option>30m</option><option>17m</option><option>15m</option>
+                <option>12m</option><option>10m</option><option>6m</option><option>2m</option>
+                <option>70cm</option>
+              </select>
+            </div>
+
+            <div class="grid-item">
+              <label>Mode</label>
+              <select id="mode" class="fld">
+                <option value="">SSB</option>
+                <option>LSB</option><option>USB</option><option>AM</option><option>FM</option>
+                <option>CW</option><option>FT8</option><option>FT4</option><option>RTTY</option><option>PSK31</option>
+              </select>
+            </div>
+          </div>
+
+        <!-- Buttons row (unchanged) -->
+        <div class="row">
+          <div style="display:flex; gap:10px; align-items:flex-end;">
+            <button id="saveBtn" class="btn primary" type="button">Log Contact</button>
+            <button id="clearBtn" class="btn" type="button">Clear</button>
+          </div>
+        </div>
+
+
+
+
+
+          <!-- Right: settings column -->
+          <aside class="settings-card">
+            <h3>Settings</h3>
+            <div class="settings-row">
+              <input type="checkbox" id="set_mhz_tunes" />
+              <label for="set_mhz_tunes">MHz click also tunes rig (CAT)</label>
+            </div>
+          </aside>
+  </div>
+
+  </section>
 <section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
         
       <div class="spotsCtrls">
@@ -504,16 +502,19 @@
 
 
 
-<div style="margin-top:7em; ">
-  <label><b>POTA Hunter Log Paste  </b><button id="potaPasteSyncBtn" type="button">Sync</button>
-    <textarea id="potaPaste" rows="2" style="width:100%" placeholder="Paste your POTA hunter log here..."></textarea>
- 
-   </label>
-  <span id="potaPasteStatus" style="margin-left:1em; color:#555"></span>
+        <div style="margin-top:7em; ">
+          <label><b>POTA Hunter Log Paste  </b><button id="potaPasteSyncBtn" type="button">Sync</button>
+            <textarea id="potaPaste" rows="2" style="width:100%" placeholder="Paste your POTA hunter log here..."></textarea>
+        
+          </label>
+          <span id="potaPasteStatus" style="margin-left:1em; color:#555"></span>
+        </div>
+
+
+        </section>
 </div>
 
 
-</section>
       <!-- RIGHT: Spots list (1/3 width) -->
       <section class="pane" id="pane-spots" style="flex:0.4; padding:10px; min-width:0; display:flex; flex-direction:column;">
 
