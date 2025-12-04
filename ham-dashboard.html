@@ -468,7 +468,7 @@
         <!-- Buttons row (unchanged) -->
         <div class="row">
           <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button id="saveBtn" class="btn primary" type="button">Log Contact</button>
+            <button id="saveBtn" class="btn primary" type="button">Log QSO</button>
             <button id="clearBtn" class="btn" type="button">Clear</button>
           </div>
         </div>
@@ -1283,6 +1283,10 @@ form.append("time_on", time_on);
 
   // Your station callsign
   form.append("station_callsign", "W5ALI");
+
+  for (const [k,v] of form.entries()) {
+  console.log("FORM FIELD:", k, v);
+}
 
   try {
     const r = await fetch(`${API}/api/qrz/insert`, {
