@@ -418,49 +418,71 @@
           #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
 
 
-          /* ===============================
-   MOBILE STACKED LAYOUT
-   ===============================*/
+ /* ======================================
+   MOBILE: stack logger first, POTA second
+   ====================================== */
 @media (max-width: 768px) {
 
-  /* Hide spectrum */
+  /* Allow the page to scroll normally */
+  html, body {
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+
+  /* Wrap: stop acting like a full-height flex app */
+  #wrap {
+    display: block !important;
+    height: auto !important;
+  }
+
+  /* Hide spectrum on mobile */
   #spectrumContainer {
     display: none !important;
   }
 
-  /* Turn your 3-column desktop row into a single vertical column */
+  /* Turn the 3-column row into a vertical stack */
   #threeColRow {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px;
+    min-height: 0 !important;
+    height: auto !important;
     width: 100% !important;
   }
 
-  /* QSO logger first */
-  #logger-bottom {
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 12px !important;
+  /* Reorder children so LOGGER (centerColumn) appears ABOVE POTA */
+  #centerColumn {
+    order: 1;
+    flex: none !important;
+    min-width: 100% !important;
   }
 
-  /* POTA iframe panel just below */
   #potapage {
-    display: block !important;
+    order: 2;
+    flex: none !important;
+    min-width: 100% !important;
     width: 100% !important;
-    height: 70vh !important; /* a good mobile-height window */
-    margin-top: 20px;
+    height: 60vh !important;  /* adjust if you want more/less POTA space */
+    margin-top: 12px;
   }
 
-  /* Hide spots + logger-top */
+  /* Hide spots column and logger-top on mobile */
   #pane-spots,
   #logger-top {
     display: none !important;
   }
 
-  /* Ensure vertical scrolling exists */
-  body, html {
-    overflow-y: auto !important;
+  /* Make the logger take natural height and not trap scroll */
+  #logger-bottom {
+    flex: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px !important;
   }
 }
+         
 
 
 
@@ -2018,7 +2040,7 @@ document.addEventListener('click', (e) => {
 <!-- Mobile Tab Bar -->
 <div id="mobileTabBar">
   <a href="#" class="tab" data-tab="qso">QSO</a>
-  <a href="#" class="tab" data-tab="pota">POTA</a>
+  <a href="#" class="tab" data-tab="pota">POT</a>
 </div>
 
 <!-- Mobile Tab Scroll Logic -->
