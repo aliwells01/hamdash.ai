@@ -231,6 +231,12 @@
 <div id="error" class="err" style="display:none"></div>
 <div id="list" class="list" role="list"></div>
 
+<!-- Mobile Tab Bar -->
+<div id="mobileTabBar">
+  <a href="ham-dashboard.html" class="tab" data-tab="qso">QSO</a>
+  <a href="pota-cards-mock.html" class="tab" data-tab="pota">POTA</a>
+</div>
+
 <script>
 /* Data source with lat/lon in each spot */
 const API = "https://api.pota.app/spot/activator"; // includes latitude & longitude
@@ -558,11 +564,6 @@ load();
 setInterval(load, 60_000);
 
 
-<!-- Mobile Tab Bar -->
-<div id="mobileTabBar">
-  <a href="ham-dashboard.html" class="tab" data-tab="qso">QSO</a>
-  <a href="pota-cards-mock.html" class="tab" data-tab="pota">POTA</a>
-</div>
 
 </script>
 
