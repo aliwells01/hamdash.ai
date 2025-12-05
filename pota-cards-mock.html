@@ -524,37 +524,6 @@ load();
 setInterval(load, 60_000);
 </script>
 
-<!-- Mobile Tab Bar -->
-<div id="mobileTabBar">
-  <a href="ham-dashboard.html" class="tab" data-tab="qso">QSO</a>
-  <a href="pota-cards-mock.html" class="tab" data-tab="pota">POTA</a>
-</div>
-<!-- Mobile Tab Scroll Logic -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const isMobile = window.innerWidth <= 768;
 
-  if (!isMobile) return; // <-- Desktop: tabs behave normally (page loads)
-
-  const qsoTab  = document.querySelector('[data-tab="qso"]');
-  const potaTab = document.querySelector('[data-tab="pota"]');
-
-  if (qsoTab) {
-    qsoTab.addEventListener("click", (e) => {
-      e.preventDefault();
-      document.querySelector("#logger-bottom")
-              .scrollIntoView({ behavior: "smooth" });
-    });
-  }
-
-  if (potaTab) {
-    potaTab.addEventListener("click", (e) => {
-      e.preventDefault();
-      document.querySelector("#potapage")
-              .scrollIntoView({ behavior: "smooth" });
-    });
-  }
-});
-</script>
 </body>
 </html>
