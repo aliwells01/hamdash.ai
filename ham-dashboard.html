@@ -384,65 +384,57 @@
 /* ================================
    MOBILE LAYOUT OVERRIDES
    ================================ */
+/* ============================================
+   ABSOLUTE MOBILE OVERRIDE (beats inline flex)
+============================================ */
 @media (max-width: 768px) {
 
-  /* Allow normal document scrolling */
-  html, body {
-    height: auto !important;
-    overflow-y: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  /* Override inline flex for #wrap */
-  #wrap {
+  /* These override inline display:flex using attribute selectors */
+  div[id="wrap"] {
     display: block !important;
     height: auto !important;
+    overflow: visible !important;
   }
 
-  /* Override inline flex for #threeColRow */
-  #threeColRow {
+  div[id="threeColRow"] {
     display: block !important;
+    height: auto !important;
+    overflow: visible !important;
     flex: none !important;
-    height: auto !important;
     min-height: 0 !important;
-    overflow: visible !important;
-    width: 100% !important;
   }
 
-  /* Logger first */
-  #centerColumn {
+  div[id="centerColumn"] {
     display: block !important;
-    order: 1 !important;
     width: 100% !important;
+    order: 1 !important;
   }
 
-  #logger-bottom {
-    flex: none !important;
-    overflow: visible !important;
+  section[id="logger-bottom"] {
+    display: block !important;
     height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
     width: 100% !important;
     padding: 12px !important;
     margin-bottom: 20px !important;
   }
 
-  /* POTA second */
-  #potapage {
+  section[id="potapage"] {
     display: block !important;
-    order: 2 !important;
-    width: 100% !important;
     height: 60vh !important;
+    order: 2 !important;
     margin-bottom: 60px !important;
   }
 
-  /* Hide desktop-only panels */
+  /* Hide desktop panes */
   #pane-spots,
   #logger-top,
   #spectrumContainer {
     display: none !important;
   }
 
-  /* Show tab bar */
+  /* Mobile tab bar */
   #mobileTabBar {
     display: flex !important;
     position: fixed;
