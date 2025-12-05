@@ -607,6 +607,25 @@
             <button id="clearBtn" class="btn" type="button">Clear</button>
           </div>
         </div>
+      <!-- Session QSO history -->
+      <div id="qsoHistoryWrap" style="margin-top:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <label style="font-size:14px; color:#9aa3b2;">
+            <input type="checkbox" id="showQsoHistory" checked>
+            Show session QSO list
+          </label>
+          <button id="clearQsoHistory" class="btn" type="button" style="padding:4px 8px; font-size:12px;">
+            Clear list
+          </button>
+        </div>
+
+        <div id="qsoHistoryBox"
+            style="margin-top:8px; max-height:120px; overflow-y:auto;
+                    border:1px solid #202637; border-radius:8px;
+                    padding:6px 8px; font-size:13px; background:#0f1320;">
+          <ul id="qsoHistoryList" style="list-style:none; margin:0; padding:0;"></ul>
+        </div>
+      </div>
 
 
 
@@ -1446,6 +1465,73 @@ form.append("time_on", time_on);
   btn.textContent = "Saved ✓"; btn.disabled = true;
   setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
 };
+// Simple in-memory session history
+const qsoHistory = [];
+
+// Format UTC time as HH:MMZ
+function currentUtcTime() {
+  return new Date().toISOString().slice(11, 16) + "Z";
+}
+
+function renderQsoHistory() {
+  const listEl = document.getElementById("qsoHistoryList");
+  if (!listEl) return;
+
+  listEl.innerHTML = "";
+
+  qsoHistory.forEach((qso) => {
+    const li = document.createElement("li");
+    li.style.padding = "2px 0";
+
+    li.innerHTML = `
+      <span style="font-weight:600;">${qso.call}</span>
+      <span style="opacity:.75; margin-left:6px;">${qso.time}</span>
+      <span style="opacity:.75; margin-left:10px;">${qso.freq}</span>
+    `;
+    listEl.appendChild(li);
+  });
+}
+
+function addQsoToHistoryFromForm() {
+  const csEl   = document.getElementById("cs");
+  const freqEl = document.getElementById("freq");
+  if (!csEl || !freqEl) return;
+
+  const call = (csEl.value || "").trim().toUpperCase();
+  const freq = (freqEl.value || "").trim();
+
+  if (!call && !freq) return; // nothing useful
+
+  qsoHistory.push({
+    call,
+    freq,
+    time: currentUtcTime(),
+  });
+
+  renderQsoHistory();
+}
+  // Add to on-screen history
+  addQsoToHistoryFromForm();
+
+// Show/hide + clear wiring
+document.addEventListener("DOMContentLoaded", () => {
+  const showCb   = document.getElementById("showQsoHistory");
+  const boxEl    = document.getElementById("qsoHistoryBox");
+  const clearBtn = document.getElementById("clearQsoHistory");
+
+  if (showCb && boxEl) {
+    showCb.addEventListener("change", (e) => {
+      boxEl.style.display = e.target.checked ? "block" : "none";
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      qsoHistory.length = 0;
+      renderQsoHistory();
+    });
+  }
+});
 
 
     })();
