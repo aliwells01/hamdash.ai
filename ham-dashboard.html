@@ -346,40 +346,76 @@
 #mobileTabBar {
   display: none;
 }
-
-/* Mobile Layout */
+/* ======================================
+   FULL MOBILE RESET — fixes scroll,
+   background, gradient, and reorders panes
+   ====================================== */
 @media (max-width: 768px) {
+
+  /* 🧨 Hard reset of structural containers */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* The wrapper must NOT be flex on mobile */
+  #wrap {
+    display: block !important;
+    height: auto !important;
+    min-height: 100% !important;
+  }
+
+  /* Remove ANY top-level height or overflow constraints */
+  #threeColRow,
+  #centerColumn,
+  #logger-bottom,
+  #potapage {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    flex: unset !important;
+  }
+
+  /* 🧹 FIX the repeating tiny gradient background */
+  body {
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+    background-attachment: scroll !important;
+  }
+
+  /* Spectrum hidden */
+  #spectrumContainer {
+    display: none !important;
+  }
+
+  /* Logger MUST come first */
+  #centerColumn {
+    order: 1 !important;
+  }
+
+  /* POTA underneath */
+  #potapage {
+    order: 2 !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+    height: 60vh !important; /* adjustable */
+  }
+
+  /* Hide unused sections */
+  #pane-spots,
+  #logger-top {
+    display: none !important;
+  }
+
+  /* MOBILE TAB BAR no longer pushes the page */
   #mobileTabBar {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 54px;
-    background: #ffffffee;
-    backdrop-filter: blur(10px);
-    border-top: 1px solid #ccc;
-    z-index: 9999;
-
-    /* iPhone safe-area padding */
-    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-bottom: 0 !important;
   }
-
-  #mobileTabBar .tab {
-    flex: 1;
-    text-align: center;
-    line-height: 54px;
-    font-size: 16px;
-    color: #555;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  #mobileTabBar .tab.active {
-    color: #000;
-    font-weight: 700;
-    border-bottom: 3px solid #007bff;
-  }
+}
 
   /* Prevent content from being covered */
   body {
@@ -2046,33 +2082,40 @@ document.addEventListener('click', (e) => {
 <!-- Mobile Tab Scroll Logic -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  const qsoTab  = document.querySelector('#mobileTabBar [data-tab="qso"]');
-  const potaTab = document.querySelector('#mobileTabBar [data-tab="pota"]');
 
-  function scrollToId(id) {
-    const el = document.getElementById(id);
-    if (!el) {
-      console.warn("Scroll target not found:", id);
-      return;
-    }
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  function mobileOnly() {
+    return window.matchMedia("(max-width: 768px)").matches;
   }
+
+  function scrollToEl(id) {
+    const el = document.getElementById(id);
+    if (!el) return console.warn("Missing element:", id);
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50); // slight delay ensures layout has settled
+  }
+
+  const qsoTab  = document.querySelector('[data-tab="qso"]');
+  const potaTab = document.querySelector('[data-tab="pota"]');
 
   if (qsoTab) {
     qsoTab.addEventListener("click", (e) => {
+      if (!mobileOnly()) return; // desktop: normal behavior
       e.preventDefault();
-      scrollToId("logger-bottom");
+      scrollToEl("logger-bottom");
     });
   }
 
   if (potaTab) {
     potaTab.addEventListener("click", (e) => {
+      if (!mobileOnly()) return;
       e.preventDefault();
-      scrollToId("potapage");
+      scrollToEl("potapage");
     });
   }
 });
 </script>
+
 
 
 
