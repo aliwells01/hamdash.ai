@@ -415,30 +415,40 @@
           #qsoForm .muted{ color:#9aa3b2; font-size:16px; }
           #qsoForm .info{ font-size:16px; color:#9aa3b2; margin-left:6px; }
           #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
-/* ======================================
+
+
+          /* ======================================
    MOBILE ONLY: Show ONLY QSO logger
    ====================================== */
 @media (max-width: 768px) {
 
-  /* Collapse the entire 3-column section */
-  #threeColRow {
+  /* Hide the dashboard pieces we don't want on mobile */
+  #spectrumContainer,
+  #potapage,
+  #pane-spots,
+  #logger-top {
     display: none !important;
   }
 
-  /* Also hide the spectrum at top */
-  #spectrumContainer {
-    display: none !important;
+  /* Keep threeColRow visible, but let it shrink down to only the logger */
+  #threeColRow {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   /* Make the QSO logger fill the screen cleanly */
   #logger-bottom {
+    display: block !important;
+    flex: unset !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 10px !important;
-    flex: unset !important;
     height: auto !important;
   }
 }
+
 
 
 </style>
