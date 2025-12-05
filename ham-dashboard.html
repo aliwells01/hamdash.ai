@@ -438,13 +438,26 @@
     margin-bottom: 20px !important;
   }
 
-  #potapage {
+/* POTA panel sizing on mobile */
+#potapage {
     display: block !important;
     order: 2 !important;
     width: 100% !important;
-    height: 60vh !important;
+
+    /* Let it grow naturally */
+    height: auto !important;
+    min-height: 60vh !important;
+
+    margin-top: 0 !important;
     margin-bottom: 80px !important;
-  }
+}
+
+#iframe-pota {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 60vh !important;
+}
+
 
   /* hide desktop-only sections */
   #pane-spots,
