@@ -519,6 +519,35 @@
   }
 }
          
+/* DEFAULT: hide tab bar on desktop */
+#mobileTabBar {
+  display: none;
+}
+
+/* MOBILE ONLY: show tab bar */
+@media (max-width: 768px) {
+  #mobileTabBar {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 54px;
+    background: #111a;
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #345;
+    z-index: 999999; /* ensure visibility */
+    justify-content: space-evenly;
+    align-items: center;
+  }
+
+  #mobileTabBar .tab {
+    color: white;
+    font-size: 16px;
+    text-decoration: none;
+    padding: 0 20px;
+  }
+}
 
 
 
@@ -2076,7 +2105,7 @@ document.addEventListener('click', (e) => {
 <!-- Mobile Tab Bar -->
 <div id="mobileTabBar">
   <a href="#" class="tab" data-tab="qso">QSO</a>
-  <a href="#" class="tab" data-tab="pota">POT</a>
+  <a href="#" class="tab" data-tab="pota">POTA</a>
 </div>
 
 <!-- Mobile Tab Scroll Logic -->
