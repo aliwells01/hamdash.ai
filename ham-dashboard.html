@@ -417,37 +417,50 @@
           #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
 
 
-          /* ======================================
-   MOBILE ONLY: Show ONLY QSO logger
-   ====================================== */
+          /* ===============================
+   MOBILE STACKED LAYOUT
+   ===============================*/
 @media (max-width: 768px) {
 
-  /* Hide the dashboard pieces we don't want on mobile */
-  #spectrumContainer,
-  #potapage,
+  /* Hide spectrum */
+  #spectrumContainer {
+    display: none !important;
+  }
+
+  /* Turn your 3-column desktop row into a single vertical column */
+  #threeColRow {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* QSO logger first */
+  #logger-bottom {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px !important;
+  }
+
+  /* POTA iframe panel just below */
+  #potapage {
+    display: block !important;
+    width: 100% !important;
+    height: 70vh !important; /* a good mobile-height window */
+    margin-top: 20px;
+  }
+
+  /* Hide spots + logger-top */
   #pane-spots,
   #logger-top {
     display: none !important;
   }
 
-  /* Keep threeColRow visible, but let it shrink down to only the logger */
-  #threeColRow {
-    display: flex !important;
-    flex-direction: column !important;
-    height: auto !important;
-    min-height: 0 !important;
-  }
-
-  /* Make the QSO logger fill the screen cleanly */
-  #logger-bottom {
-    display: block !important;
-    flex: unset !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 10px !important;
-    height: 100% !important;
+  /* Ensure vertical scrolling exists */
+  body, html {
+    overflow-y: auto !important;
   }
 }
+
 
 
 
@@ -485,7 +498,7 @@
 
 <div id="centerColumn" style="flex:1; min-width:0; display:flex; flex-direction:column; gap:12px;">
     
-
+<div id="mobile-qso-section">
 
   <section class="pane" id="logger-bottom" style="flex:2; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
     
@@ -565,6 +578,7 @@
   </div>
 
   </section>
+  </div>
 <section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
         
       <div class="spotsCtrls">
@@ -579,7 +593,7 @@
 
 
 
-        <div style="margin-top:7em; ">
+        <div  id="mobile-pota-section" style="margin-top:7em; ">
           <label><b>POTA Hunter Log Paste  </b><button id="potaPasteSyncBtn" type="button">Sync</button>
             <textarea id="potaPaste" rows="2" style="width:100%" placeholder="Paste your POTA hunter log here..."></textarea>
         
@@ -2005,7 +2019,33 @@ document.addEventListener('click', (e) => {
   <a href="ham-dashboard.html" class="tab" data-tab="qso">QSO</a>
   <a href="pota-cards-mock.html" class="tab" data-tab="pota">POTA</a>
 </div>
+<!-- Mobile Tab Scroll Logic -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const isMobile = window.innerWidth <= 768;
 
+  if (!isMobile) return; // <-- Desktop: tabs behave normally (page loads)
+
+  const qsoTab  = document.querySelector('[data-tab="qso"]');
+  const potaTab = document.querySelector('[data-tab="pota"]');
+
+  if (qsoTab) {
+    qsoTab.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelector("#logger-bottom")
+              .scrollIntoView({ behavior: "smooth" });
+    });
+  }
+
+  if (potaTab) {
+    potaTab.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelector("#potapage")
+              .scrollIntoView({ behavior: "smooth" });
+    });
+  }
+});
+</script>
 
 
 </body>
