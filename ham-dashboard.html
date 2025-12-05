@@ -385,6 +385,23 @@
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)) !important;
   }
 }
+/* Show full dashboard on desktop */
+.mobile-hide {
+  display: block;
+}
+
+/* On mobile, hide everything except the QSO logger */
+@media (max-width: 768px) {
+  .mobile-hide {
+    display: none !important;
+  }
+
+  #qsoLogger {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 10px;
+  }
+}
 
 
 </style>
@@ -394,7 +411,7 @@
 <div class="wrap" id="wrap" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
 
   <!-- TOP: Full-width spectrum (fake) -->
-  <div id="spectrumContainer" class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
+  <div id="spectrumContainer" class="mobile-hide" class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
       <canvas id="specCanvas" width="1200" height="300"></canvas>
       <div id="specTip">—</div>
   </div>
@@ -407,7 +424,7 @@
       min-height:0;
   ">
 
-<section class="pane" style="flex:1; min-width:0; position:relative;">
+<section class="mobile-hide" class="pane" style="flex:1; min-width:0; position:relative;">
     <iframe id="iframe-pota" 
             src="https://aliwells01.github.io/hamdash.ai/pota-cards-mock.html"
             style="width:100%; height:100%; border:none;">
@@ -525,7 +542,7 @@
   </div>
 
   </section>
-<section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
+<section class="mobile-hide" class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
         
       <div class="spotsCtrls">
        
@@ -560,7 +577,7 @@
 
 
       <!-- RIGHT: Spots list (1/3 width) -->
-      <section class="pane" id="pane-spots" style="flex:0.4; padding:10px; min-width:0; display:flex; flex-direction:column;">
+      <section class="mobile-hide" class="pane" id="pane-spots" style="flex:0.4; padding:10px; min-width:0; display:flex; flex-direction:column;">
 
           <div class="spotsHeader">
               <b>Spots</b>
