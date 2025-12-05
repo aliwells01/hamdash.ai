@@ -2112,38 +2112,43 @@ document.addEventListener('click', (e) => {
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 
-  function mobileOnly() {
-    return window.matchMedia("(max-width: 768px)").matches;
+  // Finds nearest scrollable parent
+  function getScrollParent(el) {
+    let parent = el.parentNode;
+    while (parent && parent !== document.body) {
+      const style = getComputedStyle(parent);
+      const overflowY = style.overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") return parent;
+      parent = parent.parentNode;
+    }
+    return window; // fallback
   }
 
-  function scrollToEl(id) {
-    const el = document.getElementById(id);
-    if (!el) return console.warn("Missing element:", id);
-    setTimeout(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50); // slight delay ensures layout has settled
-  }
+  function scrollToId(id) {
+    const target = document.getElementById(id);
+    if (!target) return console.warn("Scroll target not found:", id);
 
-  const qsoTab  = document.querySelector('[data-tab="qso"]');
-  const potaTab = document.querySelector('[data-tab="pota"]');
+    const parent = getScrollParent(target);
 
-  if (qsoTab) {
-    qsoTab.addEventListener("click", (e) => {
-      if (!mobileOnly()) return; // desktop: normal behavior
-      e.preventDefault();
-      scrollToEl("logger-bottom");
+    parent.scrollTo({
+      top: target.offsetTop,
+      behavior: "smooth"
     });
   }
 
-  if (potaTab) {
-    potaTab.addEventListener("click", (e) => {
-      if (!mobileOnly()) return;
-      e.preventDefault();
-      scrollToEl("potapage");
-    });
-  }
+  // Bind buttons
+  document.querySelector('[data-tab="qso"]')?.addEventListener("click", (e) => {
+    e.preventDefault();
+    scrollToId("logger-bottom");
+  });
+
+  document.querySelector('[data-tab="pota"]')?.addEventListener("click", (e) => {
+    e.preventDefault();
+    scrollToId("potapage");
+  });
 });
 </script>
+
 
 
 
