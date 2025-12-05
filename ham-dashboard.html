@@ -380,79 +380,76 @@
 #mobileTabBar {
   display: none;
 }
-
-/* ================================
-   MOBILE LAYOUT OVERRIDES
-   ================================ */
-/* ============================================
-   ABSOLUTE MOBILE OVERRIDE (beats inline flex)
-============================================ */
+/* =====================================================
+   ABSOLUTE MOBILE FIX — restores scrolling & layout
+   ===================================================== */
 @media (max-width: 768px) {
 
-  /* These override inline display:flex using attribute selectors */
-  div[id="wrap"] {
-    display: block !important;
+  /* override scroll lock */
+  html, body {
     height: auto !important;
-    overflow: visible !important;
+    overflow: auto !important;
+    position: static !important;
   }
 
-  div[id="threeColRow"] {
+  /* override the fixed-position full-screen app container */
+  .wrap {
+    position: static !important;
     display: block !important;
     height: auto !important;
-    overflow: visible !important;
-    flex: none !important;
-    min-height: 0 !important;
-  }
-
-  div[id="centerColumn"] {
-    display: block !important;
     width: 100% !important;
-    order: 1 !important;
-  }
-
-  section[id="logger-bottom"] {
-    display: block !important;
-    height: auto !important;
     overflow: visible !important;
-    flex: none !important;
-    width: 100% !important;
     padding: 12px !important;
+  }
+
+  /* break the desktop flex layout */
+  #threeColRow {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  #centerColumn {
+    display: block !important;
+    order: 1 !important;
+    width: 100% !important;
+  }
+
+  #logger-bottom {
+    display: block !important;
+    flex: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
     margin-bottom: 20px !important;
   }
 
-  section[id="potapage"] {
+  #potapage {
     display: block !important;
-    height: 60vh !important;
     order: 2 !important;
-    margin-bottom: 60px !important;
+    width: 100% !important;
+    height: 60vh !important;
+    margin-bottom: 80px !important;
   }
 
-  /* Hide desktop panes */
+  /* hide desktop-only sections */
   #pane-spots,
   #logger-top,
   #spectrumContainer {
     display: none !important;
   }
 
-  /* Mobile tab bar */
+  /* mobile tab bar */
   #mobileTabBar {
     display: flex !important;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     height: 54px;
     background: #111a;
     z-index: 999999;
     justify-content: space-evenly;
     align-items: center;
-  }
-
-  #mobileTabBar .tab {
-    color: white;
-    font-size: 16px;
-    text-decoration: none;
-    padding: 0 20px;
   }
 }
 
