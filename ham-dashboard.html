@@ -342,85 +342,6 @@
 }
 #topBlankPanel{ min-height:60px; } /* tweak as desired */
 
-/* Hide the tab bar on desktop */
-#mobileTabBar {
-  display: none;
-}
-/* ============================================
-   MOBILE RESET FIX (THIS IS THE CORRECT FIX)
-   ============================================ */
-@media (max-width: 768px) {
-
-  /* Let the entire page scroll naturally */
-  html, body {
-    height: auto !important;
-    overflow-y: auto !important;
-  }
-
-  /* WRAP must NOT be flex on mobile */
-  #wrap {
-    display: block !important;
-    height: auto !important;
-  }
-
-  /* The 3-column layout becomes a normal block stack */
-  #threeColRow {
-    display: block !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-  }
-
-  /* CENTER COLUMN: logger first */
-  #centerColumn {
-    display: block !important;
-    order: 1 !important;
-    width: 100% !important;
-    margin-bottom: 20px !important;
-  }
-
-  /* Logger container must be scrollable inside the PAGE, not itself */
-  #logger-bottom {
-    height: auto !important;
-    overflow: visible !important;
-    flex: none !important;
-    width: 100% !important;
-    padding: 10px !important;
-  }
-
-  /* POTA iframe panel becomes second */
-  #potapage {
-    display: block !important;
-    order: 2 !important;
-    width: 100% !important;
-    height: 60vh !important;
-    margin-bottom: 50px !important;
-  }
-
-  /* Hide extra desktop-only panes */
-  #pane-spots,
-  #logger-top {
-    display: none !important;
-  }
-
-  /* Hide spectrum */
-  #spectrumContainer {
-    display: none !important;
-  }
-}
-
-
-  /* MOBILE TAB BAR no longer pushes the page */
-  #mobileTabBar {
-    padding-bottom: 0 !important;
-  }
-}
-
-  /* Prevent content from being covered */
-  body {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)) !important;
-  }
-}
 
 
   #qsoLogger {
@@ -453,78 +374,79 @@
           #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
 
 
- /* ======================================
-   MOBILE: stack logger first, POTA second
-   ====================================== */
+/* ======================================
+   DESKTOP: hide mobile tab bar
+====================================== */
+#mobileTabBar {
+  display: none;
+}
+
+/* ======================================
+   MOBILE LAYOUT FIX
+====================================== */
 @media (max-width: 768px) {
 
-  /* Allow the page to scroll normally */
+  /* Enable full-page scrolling */
   html, body {
     height: auto !important;
     overflow-y: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Wrap: stop acting like a full-height flex app */
+  /* WRAP becomes normal block flow */
   #wrap {
     display: block !important;
     height: auto !important;
   }
 
-  /* Hide spectrum on mobile */
+  /* Spectrum hidden */
   #spectrumContainer {
     display: none !important;
   }
 
-  /* Turn the 3-column row into a vertical stack */
+  /* Stack the 3-column row vertically */
   #threeColRow {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px;
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
     min-height: 0 !important;
+  }
+
+  /* LOGGER FIRST */
+  #centerColumn {
+    display: block !important;
+    order: 1 !important;
+    width: 100% !important;
+  }
+
+  #logger-bottom {
+    flex: none !important;
+    overflow: visible !important;
     height: auto !important;
     width: 100% !important;
+    padding: 12px !important;
+    margin-bottom: 20px !important;
   }
 
-  /* Reorder children so LOGGER (centerColumn) appears ABOVE POTA */
-  #centerColumn {
-    order: 1;
-    flex: none !important;
-    min-width: 100% !important;
-  }
-
+  /* POTA SECOND */
   #potapage {
-    order: 2;
-    flex: none !important;
-    min-width: 100% !important;
+    display: block !important;
+    order: 2 !important;
     width: 100% !important;
-    height: 60vh !important;  /* adjust if you want more/less POTA space */
-    margin-top: 12px;
+    height: 60vh !important;
+    margin-bottom: 60px !important;
   }
 
-  /* Hide spots column and logger-top on mobile */
+  /* Hide desktop-only panels */
   #pane-spots,
   #logger-top {
     display: none !important;
   }
 
-  /* Make the logger take natural height and not trap scroll */
-  #logger-bottom {
-    flex: none !important;
-    height: auto !important;
-    overflow: visible !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 12px !important;
-  }
-}
-         
-/* DEFAULT: hide tab bar on desktop */
-#mobileTabBar {
-  display: none;
-}
-
-/* MOBILE ONLY: show tab bar */
-@media (max-width: 768px) {
+  /* ======================================
+     MOBILE TAB BAR (visible only on phones)
+  ====================================== */
   #mobileTabBar {
     display: flex !important;
     position: fixed;
@@ -535,7 +457,7 @@
     background: #111a;
     backdrop-filter: blur(10px);
     border-top: 1px solid #345;
-    z-index: 999999; /* ensure visibility */
+    z-index: 999999;
     justify-content: space-evenly;
     align-items: center;
   }
@@ -547,8 +469,6 @@
     padding: 0 20px;
   }
 }
-
-
 
 
 </style>
