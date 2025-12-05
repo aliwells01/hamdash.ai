@@ -402,6 +402,31 @@
   }
 }
 
+<style>
+  /* your existing styles ... */
+
+  /* ======================================
+     MOBILE ONLY: Hide all big dashboard panels
+     ====================================== */
+  @media (max-width: 768px) {
+
+    /* Hide specific panels on mobile */
+    #spectrumContainer,
+    #potapage,
+    #pane-spots,
+    #logger-top {
+      display: none !important;
+    }
+
+    /* Make QSO logger full-width and clean */
+    #logger-bottom {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 10px;
+    }
+  }
+</style>
+
 
 </style>
 </head>
@@ -410,7 +435,7 @@
 <div class="wrap" id="wrap" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
 
   <!-- TOP: Full-width spectrum (fake) -->
-  <div id="spectrumContainer"  class="mobile-hide" class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
+  <div id="spectrumContainer"   class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
       <canvas id="specCanvas" width="1200" height="300"></canvas>
       <div id="specTip">—</div>
   </div>
@@ -423,7 +448,7 @@
       min-height:0;
   ">
 
-<section  class="pane" style="flex:1; min-width:0; position:relative;">
+<section id="potapage" class="pane" style="flex:1; min-width:0; position:relative;">
     <iframe id="iframe-pota" 
             src="https://aliwells01.github.io/hamdash.ai/pota-cards-mock.html"
             style="width:100%; height:100%; border:none;">
