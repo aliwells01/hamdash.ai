@@ -392,7 +392,29 @@
     margin: 0 !important;
     padding: 0 10px;
   }
-}
+ #qsoForm *{box-sizing:border-box}
+          #qsoForm .grid{
+            display:grid; gap:10px; grid-template-columns: 70px 70px 90px 60px 60px;
+            align-items:end;
+          }
+          #qsoForm label{ display:block; font-size:16px; color:#9aa3b2; margin-bottom:6px; }
+          #qsoForm .fld{
+            background:#0f1320; border:1px solid #202637; border-radius:10px; padding:10px 12px; color:#e9edf1;
+            outline:none; width:100%;
+          }
+          #qsoForm .fld:focus{ border-color:#3454ff; box-shadow:0 0 0 2px rgba(52,84,255,.15); }
+          #qsoForm .mhzwrap{ display:flex; align-items:center; }
+          #qsoForm .mhz{ background:#0f49ff; color:#fff; font-weight:700; padding:10px 10px; margin-left:6px; border-radius:8px; }
+          #qsoForm .row{ display:flex; gap:12px; margin-top:12px; }
+          #qsoForm select.fld{font-size: 16px;line-height: 1;padding: 5px 5px;-webkit-appearance: none;-moz-appearance: none;appearance: none;}
+          #qsoForm .btn{
+            border:1px solid #2e3750; background:linear-gradient(180deg,#111827,#0d1421); color:#e9edf1; padding:10px 16px; border-radius:999px; cursor:pointer; font-weight:600;
+          }
+          #qsoForm .btn:hover{ border-color:#3b475f }
+          #qsoForm .btn.primary{ border-color:#2e64ff; background:linear-gradient(180deg,#0f2a7a,#0b1d56) }
+          #qsoForm .muted{ color:#9aa3b2; font-size:16px; }
+          #qsoForm .info{ font-size:16px; color:#9aa3b2; margin-left:6px; }
+          #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
 /* ======================================
    MOBILE ONLY: Show ONLY QSO logger
    ====================================== */
@@ -462,31 +484,7 @@
       <form id="qsoForm" autocomplete="off">
         <!-- keep your existing #qsoForm <style> if you want; or remove the inline style on the old form -->
         <!-- BEGIN: your existing logger form body (unchanged) -->
-        <style>
-          #qsoForm *{box-sizing:border-box}
-          #qsoForm .grid{
-            display:grid; gap:10px; grid-template-columns: 70px 70px 90px 60px 60px;
-            align-items:end;
-          }
-          #qsoForm label{ display:block; font-size:16px; color:#9aa3b2; margin-bottom:6px; }
-          #qsoForm .fld{
-            background:#0f1320; border:1px solid #202637; border-radius:10px; padding:10px 12px; color:#e9edf1;
-            outline:none; width:100%;
-          }
-          #qsoForm .fld:focus{ border-color:#3454ff; box-shadow:0 0 0 2px rgba(52,84,255,.15); }
-          #qsoForm .mhzwrap{ display:flex; align-items:center; }
-          #qsoForm .mhz{ background:#0f49ff; color:#fff; font-weight:700; padding:10px 10px; margin-left:6px; border-radius:8px; }
-          #qsoForm .row{ display:flex; gap:12px; margin-top:12px; }
-          #qsoForm select.fld{font-size: 16px;line-height: 1;padding: 5px 5px;-webkit-appearance: none;-moz-appearance: none;appearance: none;}
-          #qsoForm .btn{
-            border:1px solid #2e3750; background:linear-gradient(180deg,#111827,#0d1421); color:#e9edf1; padding:10px 16px; border-radius:999px; cursor:pointer; font-weight:600;
-          }
-          #qsoForm .btn:hover{ border-color:#3b475f }
-          #qsoForm .btn.primary{ border-color:#2e64ff; background:linear-gradient(180deg,#0f2a7a,#0b1d56) }
-          #qsoForm .muted{ color:#9aa3b2; font-size:16px; }
-          #qsoForm .info{ font-size:16px; color:#9aa3b2; margin-left:6px; }
-          #qsoForm .checkrow{ display:flex; align-items:center; gap:10px; margin-top:8px; }
-        </style>
+        
 
           <!-- Top line: Callsign (left) + QRZ dropdown (right) -->
           <div class="cs-row">
