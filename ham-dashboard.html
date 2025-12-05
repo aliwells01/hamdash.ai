@@ -351,7 +351,7 @@
   }
  #qsoForm *{box-sizing:border-box}
           #qsoForm .grid{
-            display:grid; gap:10px; grid-template-columns: 70px 70px 90px 60px 60px;
+            display:grid; gap:10px; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
             align-items:end;
           }
           #qsoForm label{ display:block; font-size:16px; color:#9aa3b2; margin-bottom:6px; }
@@ -384,6 +384,17 @@
    ABSOLUTE MOBILE FIX — restores scrolling & layout
    ===================================================== */
 @media (max-width: 768px) {
+
+/* FORCE QSO FIRST */
+  #centerColumn {
+    order: 1 !important;
+  }
+
+  /* FORCE POTA SECOND */
+  #potapage {
+    order: 2 !important;
+  }
+
 
   /* override scroll lock */
   html, body {
