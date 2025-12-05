@@ -86,52 +86,6 @@
 }
 
 
-/* Hide the tab bar on desktop */
-#mobileTabBar {
-  display: none;
-}
-
-/* Mobile Layout */
-@media (max-width: 768px) {
-  #mobileTabBar {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 54px;
-    background: #ffffffee;
-    backdrop-filter: blur(10px);
-    border-top: 1px solid #ccc;
-    z-index: 9999;
-
-    /* iPhone safe-area padding */
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  #mobileTabBar .tab {
-    flex: 1;
-    text-align: center;
-    line-height: 54px;
-    font-size: 16px;
-    color: #555;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  #mobileTabBar .tab.active {
-    color: #000;
-    font-weight: 700;
-    border-bottom: 3px solid #007bff;
-  }
-
-  /* Prevent content from being covered */
-  body {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)) !important;
-  }
-}
-
-
 
 </style>
 
