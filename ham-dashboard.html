@@ -381,12 +381,12 @@
   display: none;
 }
 
-/* ======================================
-   MOBILE LAYOUT FIX
-====================================== */
+/* ================================
+   MOBILE LAYOUT OVERRIDES
+   ================================ */
 @media (max-width: 768px) {
 
-  /* Enable full-page scrolling */
+  /* Allow normal document scrolling */
   html, body {
     height: auto !important;
     overflow-y: auto !important;
@@ -394,26 +394,23 @@
     padding: 0 !important;
   }
 
-  /* WRAP becomes normal block flow */
+  /* Override inline flex for #wrap */
   #wrap {
     display: block !important;
     height: auto !important;
   }
 
-  /* Spectrum hidden */
-  #spectrumContainer {
-    display: none !important;
-  }
-
-  /* Stack the 3-column row vertically */
+  /* Override inline flex for #threeColRow */
   #threeColRow {
     display: block !important;
+    flex: none !important;
     height: auto !important;
-    overflow: visible !important;
     min-height: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
   }
 
-  /* LOGGER FIRST */
+  /* Logger first */
   #centerColumn {
     display: block !important;
     order: 1 !important;
@@ -429,7 +426,7 @@
     margin-bottom: 20px !important;
   }
 
-  /* POTA SECOND */
+  /* POTA second */
   #potapage {
     display: block !important;
     order: 2 !important;
@@ -440,13 +437,12 @@
 
   /* Hide desktop-only panels */
   #pane-spots,
-  #logger-top {
+  #logger-top,
+  #spectrumContainer {
     display: none !important;
   }
 
-  /* ======================================
-     MOBILE TAB BAR (visible only on phones)
-  ====================================== */
+  /* Show tab bar */
   #mobileTabBar {
     display: flex !important;
     position: fixed;
@@ -455,8 +451,6 @@
     right: 0;
     height: 54px;
     background: #111a;
-    backdrop-filter: blur(10px);
-    border-top: 1px solid #345;
     z-index: 999999;
     justify-content: space-evenly;
     align-items: center;
@@ -470,12 +464,13 @@
   }
 }
 
+          
 
 </style>
 </head>
 <body>
 
-<div class="wrap" id="wrap" style="gap:12px; padding:12px;">
+<div class="wrap" id="wrap" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
 
   <!-- TOP: Full-width spectrum (fake) -->
   <div id="spectrumContainer"   class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
@@ -484,8 +479,12 @@
   </div>
 
   <!-- BOTTOM: 3-column layout -->
-  <div id="threeColRow" style="gap:12px;">
-
+  <div id="threeColRow" style="
+      display:flex; 
+      flex:1; 
+      gap:12px;
+      min-height:0;
+  ">
 
 <section id="potapage" class="pane" style="flex:1; min-width:0; position:relative;">
     <iframe id="iframe-pota" 
