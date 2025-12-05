@@ -393,29 +393,31 @@
     padding: 0 10px;
   }
 }
+/* ======================================
+   MOBILE ONLY: Show ONLY QSO logger
+   ====================================== */
+@media (max-width: 768px) {
 
- /* your existing styles ... */
-
-  /* ======================================
-     MOBILE ONLY: Hide all big dashboard panels
-     ====================================== */
-  @media (max-width: 768px) {
-
-    /* Hide specific panels on mobile */
-    #spectrumContainer,
-    #potapage,
-    #pane-spots,
-    #logger-top {
-      display: none !important;
-    }
-
-    /* Make QSO logger full-width and clean */
-    #logger-bottom {
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 10px;
-    }
+  /* Collapse the entire 3-column section */
+  #threeColRow {
+    display: none !important;
   }
+
+  /* Also hide the spectrum at top */
+  #spectrumContainer {
+    display: none !important;
+  }
+
+  /* Make the QSO logger fill the screen cleanly */
+  #logger-bottom {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 10px !important;
+    flex: unset !important;
+    height: auto !important;
+  }
+}
+
 
 </style>
 </head>
