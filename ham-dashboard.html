@@ -385,15 +385,7 @@
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)) !important;
   }
 }
-/* Desktop: do nothing */
-.mobile-hide {}
 
-/* Mobile: hide elements */
-@media (max-width: 768px) {
-  .mobile-hide {
-    display: none !important;
-  }
-}
 
   #qsoLogger {
     width: 100% !important;
@@ -402,8 +394,7 @@
   }
 }
 
-<style>
-  /* your existing styles ... */
+ /* your existing styles ... */
 
   /* ======================================
      MOBILE ONLY: Hide all big dashboard panels
@@ -425,8 +416,6 @@
       padding: 0 10px;
     }
   }
-</style>
-
 
 </style>
 </head>
