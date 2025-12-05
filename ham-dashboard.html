@@ -413,12 +413,14 @@
     padding: 12px !important;
   }
 
-  /* break the desktop flex layout */
+/* 👉 Make threeColRow a vertical flex so order works */
   #threeColRow {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     height: auto !important;
-    overflow: visible !important;
     flex: none !important;
+    overflow: visible !important;
+    width: 100% !important;
   }
 
   #centerColumn {
