@@ -1436,6 +1436,8 @@ qs('saveBtn').onclick = async () => {
 /* if (!f.qso_date) { alert("Missing QSO date."); return; }
 if (!f.qso_time) { alert("Missing QSO time."); return; } */
 
+  console.log("Calling history function...");
+  addQsoToHistoryFromForm();
 
 // Build current UTC date/time for QRZ
 const now = new Date();
@@ -1525,9 +1527,6 @@ function addQsoToHistoryFromForm() {
 
   renderQsoHistory();
 }
-  // Add to on-screen history
-  addQsoToHistoryFromForm();
-  console.log("CALL:", csEl?.value, "FREQ:", freqEl?.value);
 
 // Show/hide + clear wiring
 document.addEventListener("DOMContentLoaded", () => {
