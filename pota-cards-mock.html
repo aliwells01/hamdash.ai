@@ -4,6 +4,9 @@
 <title>POTA Spots — Compact List View</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://api.pota.app">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.2.0/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
+
 <style>
   :root{ --bg:#0b0f14; --text:#e6edf3; --panel:#0f141b; --line:#1f2630; --muted:#9aa4b2; }
   html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 system-ui,Segoe UI,Roboto,Arial,sans-serif}
@@ -56,7 +59,7 @@
 
 
 /* ========= CUSTOM TOOLTIP STYLING ========= */
-.tooltip-box {
+/* .tooltip-box {
   position: absolute;
   z-index: 9999;
   background: rgba(20, 24, 32, 0.95);
@@ -64,7 +67,7 @@
   color: #dfe7ff;
   font-size: 12px;
   line-height: 1.35;
-  border-radius: 10px;        /* nice rounded corners */
+  border-radius: 10px;        
   border: 1px solid #4a5060;
   max-width: 260px;
   pointer-events: none;
@@ -77,20 +80,81 @@
 .spot-hover-wrapper {
   position: relative;
   display: inline-block;
+} */
+
+.tooltip-box {
+  position: absolute;
+  z-index: 9999;
+  background: rgba(20, 24, 32, 0.96);
+  padding: 10px 12px 12px;
+  color: #dfe7ff;
+  font-size: 12px;
+  line-height: 1.35;
+  border-radius: 10px;
+  border: 1px solid #4a5060;
+  max-width: 280px;
+  pointer-events: auto;     /* 👈 allow clicking */
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  display: none;
 }
 
-.spot-hover-wrapper:hover .tooltip-box {
+.tooltip-box.open {
+  display: block;
+  opacity: 1;
+  transform: translateY(10px);
+}
+
+.tooltip-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  border: none;
+  background: none;
+  color: #cfd7ff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tooltip-close:hover {
+  color: #ffffff;
+}
+
+/* .spot-hover-wrapper:hover .tooltip-box {
   opacity: 1;
   transform: translateY(10px);
   transform: translateX(100px);
+} */
+
+
+
+/* Optional: make tooltip a bit wider for map */
+.tooltip-box { width: 300px; }
+
+.mini-map {
+  width: 100%;
+  height: 190px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: #05070c;
 }
+
+.mini-az { display:none; }
+.map-caption { display:none; }
 
 
 
 </style>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 </head>
 
@@ -151,6 +215,9 @@
 
 <div id="error" class="err" style="display:none"></div>
 <div id="list" class="list" role="list"></div>
+
+<script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 
 <script>
 /* Data source with lat/lon in each spot */
@@ -254,6 +321,160 @@ function saveStore(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(hunte
 function makeKey(s){ const ts = t(s) ? String(new Date(t(s)).getTime()) : ""; const f = toKhz(freq(s)); const c = call(s)||""; const st = pstate(s)||""; const p = park(s)||""; return [c,p,Math.round(f||0),ts].join("|"); }
 function isHuntedByYou(keyOrSpot){ if (typeof keyOrSpot === "string") return huntedStore[keyOrSpot] === 1; const k = makeKey(keyOrSpot); return huntedStore[k] === 1; }
 function setHunted(key, val){ if (val) huntedStore[key]=1; else delete huntedStore[key]; saveStore(); }
+
+function greatCircleMiles(lat1, lon1, lat2, lon2) {
+  const R = 3958.7613; // miles
+  const toRad = d => d * Math.PI / 180;
+  const φ1 = toRad(lat1), φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  const c = 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+  return R * c;
+}
+
+// QTH-centered azimuthal equidistant projection
+function azEqProject(lat, lon, lat0, lon0) {
+  const toRad = d => d * Math.PI / 180;
+  const φ = toRad(lat),  λ = toRad(lon);
+  const φ0 = toRad(lat0), λ0 = toRad(lon0);
+  const cosc = Math.sin(φ0)*Math.sin(φ) + Math.cos(φ0)*Math.cos(φ)*Math.cos(λ-λ0);
+  const c = Math.acos(Math.min(1, Math.max(-1, cosc)));
+  const k = (c === 0) ? 1 : (c / Math.sin(c));
+  const x = k * Math.cos(φ) * Math.sin(λ-λ0);
+  const y = k * (Math.cos(φ0)*Math.sin(φ) - Math.sin(φ0)*Math.cos(φ)*Math.cos(λ-λ0));
+  return { x, y, c }; // c in radians
+}
+
+
+
+async function drawAzimuthal(canvas, qthLat, qthLon, parkLat, parkLon) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = "#05070c";
+  ctx.fillRect(0, 0, w, h);
+
+  const cx = w / 2, cy = h / 2;
+  const r = Math.min(w, h) * 0.44;
+
+  // Load land + borders once
+  const { land, borders } = await loadWorldBasemap();
+
+  // D3 azimuthal equidistant projection centered on QTH
+ // Angular distance between QTH and PARK (radians)
+const toRad = d => d * Math.PI / 180;
+const φ1 = toRad(qthLat), φ2 = toRad(parkLat);
+const Δφ = toRad(parkLat - qthLat);
+const Δλ = toRad(parkLon - qthLon);
+const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+const c = 2 * Math.asin(Math.min(1, Math.sqrt(a))); // 0..π
+
+// Make the path take ~80% of the globe radius (adjust 0.8 -> 0.9 for tighter)
+const fill = 0.82;
+const scale = (r * fill) / Math.max(0.15, c);
+
+const projection = d3.geoAzimuthalEquidistant()
+  .rotate([-qthLon, -qthLat])
+  .translate([cx, cy])
+  .scale(scale);
+
+
+  const path = d3.geoPath(projection, ctx);
+
+  // Sphere (ocean)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#0b1220";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Clip to the globe circle so land doesn't draw outside
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Land fill
+  ctx.beginPath();
+  path(land);
+  ctx.fillStyle = "rgba(180, 200, 255, 0.18)"; // land tint
+  ctx.fill();
+
+  // Country borders
+  ctx.beginPath();
+  path(borders);
+  ctx.strokeStyle = "rgba(255,255,255,0.20)";
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  ctx.restore(); // end clip
+
+  // Project the park point (and QTH is center)
+  const qth = [qthLon, qthLat];
+  const park = [parkLon, parkLat];
+
+  const parkXY = projection(park); // [x,y]
+  const px = parkXY[0], py = parkXY[1];
+
+  // Path line (QTH center -> park)
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(px, py);
+  ctx.strokeStyle = "#f59e0b";
+  ctx.setLineDash([6, 6]);
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // QTH marker
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#22c55e";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // PARK marker
+  ctx.beginPath();
+  ctx.arc(px, py, 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#3b82f6";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Labels
+  ctx.font = "bold 12px system-ui, Segoe UI, Arial";
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillText("QTH", cx + 10, cy - 8);
+  ctx.fillText("PARK", px + 10, py - 8);
+}
+
+
+
+let WORLD = null; // { land: GeoJSON, borders: GeoJSON }
+
+async function loadWorldBasemap() {
+  if (WORLD) return WORLD;
+
+  // 110m is lightweight and fast; switch to 50m for more detail (heavier)
+  const topo = await fetch("https://unpkg.com/world-atlas@2/land-110m.json").then(r => r.json());
+  const land = topojson.feature(topo, topo.objects.land);
+
+  // Countries file for borders (optional but nice)
+  const topoC = await fetch("https://unpkg.com/world-atlas@2/countries-110m.json").then(r => r.json());
+  const borders = topojson.mesh(topoC, topoC.objects.countries, (a, b) => a !== b);
+
+  WORLD = { land, borders };
+  return WORLD;
+}
+
 
 /* Sorting helpers */
 function normDate(s) {
@@ -404,16 +625,38 @@ items = all.slice()
  
 
     <!-- ⭐ TOOLTIP ⭐ -->
-    <div class="tooltip-box">
-    
-      
-      ${s.name ? `${distTxt} to ${s.name}, ${s.locationDesc}<br>` : ""}
-      ${s.mode ? `${s.mode} on ${b}<br>` : ""}
-     
-      Active ${when ? relTime(when) : ""}
-      
-    
-    </div>
+      <div class="tooltip-box">
+        <button class="tooltip-close" title="Close">×</button>
+
+        <!-- Globe view -->
+        <div class="mini-map mini-globe"
+            data-park-lat="${lat(s)}"
+            data-park-lon="${lon(s)}"
+            data-qth-lat="${GA_LAT}"
+            data-qth-lon="${GA_LON}"
+            data-key="${key}"></div>
+
+        <!-- Azimuthal view (canvas) -->
+        <canvas class="mini-map mini-az"
+                width="300" height="190"
+                data-park-lat="${lat(s)}"
+                data-park-lon="${lon(s)}"
+                data-qth-lat="${GA_LAT}"
+                data-qth-lon="${GA_LON}"></canvas>
+
+        <div class="map-caption" style="margin-top:.35rem; color:#cbd5e1; font-size:12px; display:none">
+          DX on far side of globe — showing QTH-centered view
+        </div>
+
+        <div style="margin-top:.4rem">
+          ${s.name ? `${distTxt} to ${s.name}, ${s.locationDesc}<br>` : ""}
+          ${s.mode ? `${s.mode} on ${b}<br>` : ""}
+          Active ${when ? relTime(when) : ""}
+        </div>
+      </div>
+
+
+
 
   </div>
 </article>
@@ -427,6 +670,231 @@ items = all.slice()
     list.innerHTML = `<div class="muted" style="padding:.8rem">No spots match your filters.</div>`;
   }
 }
+
+function makeDotMarker(label, bg) {
+  const el = document.createElement("div");
+  el.style.cssText = `
+    display:inline-flex;align-items:center;gap:0px;
+    padding:0px 2px;border-radius:999px;
+    background:${bg};color:#fff;font-weight:800;
+    font-size:11px;border:1px solid rgba(255,255,255,.35);
+    box-shadow:0 2px 10px rgba(0,0,0,.45);
+    white-space:nowrap;
+  `;
+  const dot = document.createElement("span");
+  dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:#fff;opacity:.95;`;
+  const txt = document.createElement("span");
+  txt.textContent = label;
+  el.append(txt);
+  return el;
+}
+
+
+
+
+
+
+
+function initMiniGlobe(mapEl) {
+  if (!mapEl) return;
+
+  const parkLat = Number(mapEl.dataset.parkLat);
+  const parkLon = Number(mapEl.dataset.parkLon);
+  const qthLat  = Number(mapEl.dataset.qthLat);
+  const qthLon  = Number(mapEl.dataset.qthLon);
+
+  if (![parkLat, parkLon, qthLat, qthLon].every(Number.isFinite)) {
+    mapEl.innerHTML = `<div style="padding:8px;color:#cbd5e1;font-size:8px">No coordinates for this spot.</div>`;
+    return;
+  }
+
+  // If already created, just resize it
+  if (mapEl._ml_map) {
+    mapEl._ml_map.resize();
+    return;
+  }
+
+  // Unique ID for MapLibre container
+  mapEl.id ||= "ml_" + (mapEl.dataset.key || Math.random().toString(36).slice(2)).replace(/\W/g, "");
+
+  // Public demo style from MapLibre (no API key)
+ const rasterStyle = {
+  version: 8,
+  sources: {
+    carto: {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+      ],
+      tileSize: 256,
+      maxzoom: 19
+    }
+  },
+  layers: [
+    { id: "carto-tiles", type: "raster", source: "carto" }
+  ]
+};
+
+const map = new maplibregl.Map({
+  container: mapEl.id,
+  style: rasterStyle,          // 👈 THIS is the key change
+  center: [(qthLon + parkLon) / 2, (qthLat + parkLat) / 2],
+  zoom: 1.9,
+  pitch: 55,
+  bearing: -25,
+  interactive: false,
+  attributionControl: false
+});
+
+
+  mapEl._ml_map = map;
+
+  map.on("load", () => {
+  // Globe projection
+  try { map.setProjection({ type: "globe" }); } catch(e){}
+
+  const qth  = [qthLon, qthLat];
+  const park = [parkLon, parkLat];
+
+  // Markers (reliable, no glyphs needed)
+  new maplibregl.Marker({ element: makeDotMarker("QTH",  "rgba(34,197,94,.45)") })
+    .setLngLat(qth).addTo(map);
+
+  new maplibregl.Marker({ element: makeDotMarker("PARK", "rgba(59,130,246,.45)") })
+    .setLngLat(park).addTo(map);
+
+  // Line
+  map.addSource("pathline", {
+    type: "geojson",
+    data: { type:"Feature", geometry:{ type:"LineString", coordinates:[qth, park] } }
+  });
+
+  map.addLayer({
+    id: "pathline-layer",
+    type: "line",
+    source: "pathline",
+    paint: {
+      "line-color": "#f59e0b",
+      "line-width": 3.5,
+      "line-opacity": 0.95
+    }
+  });
+
+  // Fit FIRST while flat, THEN tilt (prevents “off-screen”)
+  const bounds = new maplibregl.LngLatBounds().extend(qth).extend(park);
+
+  map.setPitch(0); map.setBearing(0);
+  map.resize();
+  map.fitBounds(bounds, { padding: 48, duration: 0 });
+
+  map.setPitch(55); map.setBearing(-25);
+
+  // second-pass fit (tooltip timing fix)
+  setTimeout(() => {
+    map.resize();
+    map.setPitch(0); map.setBearing(0);
+    map.fitBounds(bounds, { padding: 48, duration: 0 });
+    map.setPitch(55); map.setBearing(-25);
+  }, 60);
+});
+
+}
+
+
+
+
+
+
+
+
+// Close all open tooltips
+function closeAllTooltips() {
+  document.querySelectorAll('.tooltip-box.open')
+    .forEach(t => t.classList.remove('open'));
+}
+
+function openTooltip(wrapper) {
+  closeAllTooltips();
+  const tip = wrapper.querySelector('.tooltip-box');
+  if (!tip) return;
+
+  tip.classList.add('open');
+
+  requestAnimationFrame(() => {
+    initTooltipMap(tip);
+  });
+}
+
+
+function initTooltipMap(tipEl) {
+  const globeEl = tipEl.querySelector(".mini-globe");
+  const azEl    = tipEl.querySelector(".mini-az");
+  const capEl   = tipEl.querySelector(".map-caption");
+
+  if (!globeEl || !azEl) return;
+
+  const parkLat = Number(globeEl.dataset.parkLat);
+  const parkLon = Number(globeEl.dataset.parkLon);
+  const qthLat  = Number(globeEl.dataset.qthLat);
+  const qthLon  = Number(globeEl.dataset.qthLon);
+
+  // Missing coords
+  if (![parkLat, parkLon, qthLat, qthLon].every(Number.isFinite)) {
+    globeEl.style.display = "none";
+    azEl.style.display = "none";
+    if (capEl) { capEl.style.display = "block"; capEl.textContent = "Missing coordinates for this spot."; }
+    return;
+  }
+
+  const distMi = greatCircleMiles(qthLat, qthLon, parkLat, parkLon);
+  const far = distMi > 6000; // <-- adjust threshold if you want
+
+  if (far) {
+    // Show azimuthal (always works for Japan etc.)
+    globeEl.style.display = "none";
+    azEl.style.display = "block";
+    if (capEl) capEl.style.display = "block";
+
+    drawAzimuthal(azEl, qthLat, qthLon, parkLat, parkLon).catch(console.error);
+  } else {
+    // Show globe
+    azEl.style.display = "none";
+    if (capEl) capEl.style.display = "none";
+    globeEl.style.display = "block";
+
+    // IMPORTANT: initialize globe only when visible
+    initMiniGlobe(globeEl);
+    if (globeEl._ml_map) globeEl._ml_map.resize();
+  }
+}
+
+
+
+// Click on a row opens tooltip
+list.addEventListener('click', (e) => {
+  const closeBtn = e.target.closest('.tooltip-close');
+  if (closeBtn) {
+    e.stopPropagation();
+    closeAllTooltips();
+    return;
+  }
+
+  const wrap = e.target.closest('.spot-hover-wrapper');
+  if (!wrap) return;
+
+  openTooltip(wrap);
+});
+
+// Click outside closes tooltip
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.spot-hover-wrapper')) return;
+  closeAllTooltips();
+});
+
+
 
 
 bandSel.onchange = modeSel.onchange = sortSel.onchange = (sortSel2 ? (e=>render(e)) : (e=>render(e))); 
