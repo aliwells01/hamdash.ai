@@ -10,12 +10,33 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import your backend modules
 import app as qrz_app            # QRZ, paste_sync, CAT control
 import radio_backend             # SQLite spot loader
+import sqlite3
+from fastapi import HTTPException
+
+SPOTS_DB = "/Users/aw/documents/hobbies/ham/radio_intel/data/spots.sqlite"
 
 app = FastAPI(
     title="HAM Dashboard API",
     description="Backend service for ham-dashboard.html (POTA / SOTA / DX / CAT / QRZ)",
     version="1.0.0"
 )
+
+def get_pota_scores_now():
+    conn = sqlite3.connect(SPOTS_DB)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT park, score
+        FROM pota_park_status_now
+        WHERE score IS NOT NULL
+    """)
+
+    rows = cur.fetchall()
+    conn.close()
+
+    # return { "K-1234": 12.3, ... }
+    return {row["park"]: row["score"] for row in rows}
 
 # Allow GitHub Pages or any frontend to use the API
 app.add_middleware(
@@ -102,3 +123,14 @@ async def api_rig_freq():
         return await qrz_app.get_rig_frequency()
     except Exception as e:
         return {"error": f"Rig frequency failed: {e}"}
+
+# -----------------------------------------------------------
+# GEt Pota Scores
+# -----------------------------------------------------------
+
+@app.get("/api/pota/park_status_now")
+def api_pota_park_status_now():
+    try:
+        return get_pota_scores_now()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
