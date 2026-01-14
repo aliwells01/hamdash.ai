@@ -13,7 +13,7 @@ import radio_backend             # SQLite spot loader
 import sqlite3
 from fastapi import HTTPException
 
-SPOTS_DB = "/Users/aw/documents/hobbies/ham/radio_intel/data/spots.sqlite"
+from db_paths import spots_db_path
 
 app = FastAPI(
     title="HAM Dashboard API",
@@ -22,7 +22,7 @@ app = FastAPI(
 )
 
 def get_pota_scores_now():
-    conn = sqlite3.connect(SPOTS_DB)
+    conn = sqlite3.connect(spots_db_path())
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
