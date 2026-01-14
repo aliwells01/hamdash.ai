@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>POTA Scoring</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    button:hover { background: #f6f6f6; }
+    .pill { padding: 6px 10px; border-radius: 999px; background: #eee; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+    .card { border: 1px solid #e1e1e1; border-radius: 14px; padding: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }
+    th { position: sticky; top: 0; background: #fff; }
+    pre { white-space: pre-wrap; background: #0b1020; color: #cde; padding: 10px; border-radius: 12px; overflow: auto; }
+    .muted { color: #666; font-size: 12px; }
+    input { padding: 8px 10px; border-radius: 10px; border: 1px solid #ccc; width: 520px; max-width: 95vw; }
+  </style>
+</head>
+<body>
+  <h2>POTA Scoring & Live Pipeline</h2>
+
+  <div class="row">
+    <span class="pill" id="liveStatus">Live: unknown</span>
+    <button onclick="startLive()">Start run_live</button>
+    <button onclick="stopLive()">Stop run_live</button>
+    <button onclick="refresh()">Refresh tables</button>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
+    <span class="muted">DB:</span>
+    <input id="dbPath" value="/Users/aw/documents/hobbies/ham/radio_intel/data/spots.sqlite" />
+    <span class="muted">Auto-refresh:</span>
+    <select id="autoMs" onchange="setAuto()">
+      <option value="0">Off</option>
+      <option value="5000">5s</option>
+      <option value="10000" selected>10s</option>
+      <option value="30000">30s</option>
+    </select>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Manual Steps</h3>
+      <div class="row">
+        <button onclick="runStep('ssb_agent')">1) ssb_agent</button>
+        <button onclick="runStep('pota_refresh')">2) POTA refresh</button>
+        <button onclick="runStep('qrz_enrich')">3) QRZ enrich</button>
+        <button onclick="runStep('build_edges_recent')">4) Build edges (60m)</button>
+        <button onclick="runStep('make_status')">5) Update POTA Scores</button>
+      </div>
+      <p class="muted">Tip: QRZ enrich is slow; don’t spam it every 10s. Use it when callsign_location is lagging.</p>
+      <div id="stepResult"></div>
+    </div>
+
+    <div class="card">
+      <h3>Counts</h3>
+      <div class="row" id="countsRow"></div>
+    </div>
+
+
+    <div class="card">
+      <h3>POTA Park Scoring (Live)</h3>
+      <div id="statusTable"></div>
+    </div>
+
+
+    <div class="card">
+      <h3>Newest POTA Spots / Edges</h3>
+      <div id="edgesTable"></div>
+    </div>
+
+
+  </div>
+
+<script>
+let timer = null;
+
+function dbParam() {
+  const db = document.getElementById('dbPath').value.trim();
+  return 'db=' + encodeURIComponent(db);
+}
+
+async function apiGet(path) {
+  const r = await fetch(path);
+  return await r.json();
+}
+async function apiPost(path) {
+  const r = await fetch(path, {method:'POST'});
+  return await r.json();
+}
+function esc(s){ return (s??'').toString().replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+
+function renderCounts(counts){
+  const row = document.getElementById('countsRow');
+  row.innerHTML = '';
+  for (const [k,v] of Object.entries(counts||{})) {
+    const span = document.createElement('span');
+    span.className = 'pill';
+    span.textContent = `${k}: ${v}`;
+    row.appendChild(span);
+  }
+}
+
+function renderTable(containerId, rows){
+  const el = document.getElementById(containerId);
+  if (!rows || rows.length === 0) {
+    el.innerHTML = '<div class="muted">No rows.</div>';
+    return;
+  }
+  const cols = Object.keys(rows[0]);
+  let html = '<table><thead><tr>' + cols.map(c=>`<th>${esc(c)}</th>`).join('') + '</tr></thead><tbody>';
+  for (const r of rows) {
+    html += '<tr>' + cols.map(c=>`<td>${esc(r[c])}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+async function refresh(){
+  const data = await apiGet('/api/data?' + dbParam() + '&limit=50');
+  if (!data.ok) {
+    document.getElementById('countsRow').innerHTML = `<span class="pill">Error: ${esc(data.error||'unknown')}</span>`;
+    return;
+  }
+  renderCounts(data.counts);
+  renderTable('edgesTable', data.recent_edges);
+  renderTable('statusTable', data.park_status_now);
+  await updateLiveStatus();
+}
+
+async function runStep(step){
+  const res = await fetch('/api/step/' + step + '?' + dbParam(), {method:'POST'}).then(r=>r.json());
+  const el = document.getElementById('stepResult');
+  el.innerHTML = `<pre>${esc(JSON.stringify(res, null, 2))}</pre>`;
+  await refresh();
+}
+
+async function startLive(){
+  const res = await apiPost('/api/run_live/start');
+  document.getElementById('stepResult').innerHTML = `<pre>${esc(JSON.stringify(res, null, 2))}</pre>`;
+  await updateLiveStatus();
+}
+async function stopLive(){
+  const res = await apiPost('/api/run_live/stop');
+  document.getElementById('stepResult').innerHTML = `<pre>${esc(JSON.stringify(res, null, 2))}</pre>`;
+  await updateLiveStatus();
+}
+async function updateLiveStatus(){
+  const res = await apiGet('/api/run_live/status');
+  const pill = document.getElementById('liveStatus');
+  pill.textContent = res.running ? `Live: running (pid ${res.pid})` : 'Live: stopped';
+}
+
+function setAuto(){
+  const ms = parseInt(document.getElementById('autoMs').value, 10);
+  if (timer) { clearInterval(timer); timer = null; }
+  if (ms > 0) timer = setInterval(refresh, ms);
+}
+
+setAuto();
+refresh();
+</script>
+</body>
+</html>
