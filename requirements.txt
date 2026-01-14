@@ -12,3 +12,4 @@ numpy
 python-dotenv
 aiosqlite
 websockets
+psycopg[binary]
