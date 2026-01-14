@@ -4,6 +4,7 @@ import numpy as np
 import aiohttp
 from aiohttp import web
 from datetime import datetime
+from db_paths import spots_db_path
 
 import os, sys, logging
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +16,7 @@ RTL_HOST = os.environ.get("RTL_HOST", "127.0.0.1")
 RTL_PORT = int(os.environ.get("RTL_PORT", "1234"))
 RIG_HOST = os.environ.get("RIG_HOST", "127.0.0.1")
 RIG_PORT = int(os.environ.get("RIG_PORT", "4532"))   # 4532 rigctld (G90), or 4533 SDR++ RigCTL server
-DB_PATH  = os.environ.get("SPOTS_DB", "/data/spots.sqlite")
+
 BACKEND_PORT = int(os.environ.get("BACKEND_PORT", "8000"))  # <— HTTP/WS port
 
 FFT_SIZE = int(os.environ.get("FFT_SIZE", "2048"))
@@ -240,7 +241,7 @@ async def serve_pota_html(request):
 # ---------- API: spots ----------
 @routes.get("/api/spots")
 async def api_spots(req):
-    DB_PATH = os.environ.get("SPOTS_DB")
+    DB_PATH = spots_db_path()
     TABLE   = os.environ.get("SPOTS_TABLE", "spots")
 
     def demo():
@@ -255,7 +256,7 @@ async def api_spots(req):
             print(f"[/api/spots] DB missing or not set: {DB_PATH!r} -> demo")
             return demo()
 
-        con = sqlite3.connect(DB_PATH)
+        con = sqlite3.connect(db_path)
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
@@ -335,7 +336,7 @@ def load_spots():
     """
     import os, sqlite3, time, traceback
 
-    DB_PATH = os.environ.get("SPOTS_DB")
+    DB_PATH = spots_db_path()
     TABLE   = os.environ.get("SPOTS_TABLE", "spots")
 
     def demo_list():
@@ -350,7 +351,7 @@ def load_spots():
             print(f"[load_spots] DB missing or not set: {DB_PATH!r} -> demo")
             return demo_list()
 
-        con = sqlite3.connect(DB_PATH)
+        con = sqlite3.connect(db_path)
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
