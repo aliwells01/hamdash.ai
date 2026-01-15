@@ -2,15 +2,30 @@
 from __future__ import annotations
 
 import argparse
-import sqlite3
 import math
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timezone, timedelta
 
-from db_paths import spots_db_path
+import psycopg
+
+
+# -------------------------
+# Postgres helper
+# -------------------------
+def pg_connect() -> psycopg.Connection:
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise SystemExit("DATABASE_URL not set")
+    return psycopg.connect(url)
+
 
 def nowz() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z")
 
+
+# -------------------------
+# Geo helpers
+# -------------------------
 def haversine_km(lat1, lon1, lat2, lon2) -> float:
     R = 6371.0
     p1 = math.radians(lat1)
@@ -21,55 +36,25 @@ def haversine_km(lat1, lon1, lat2, lon2) -> float:
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
 
-def ensure_edges_table(conn: sqlite3.Connection) -> None:
-    # In case table wasn’t created for some reason
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS pota_heard_edges (
-      edge_id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      spot_id            INTEGER NOT NULL,
-      park_ref           TEXT NOT NULL,
-      activator_call     TEXT NOT NULL,
-      spotter_call       TEXT NOT NULL,
-      band               TEXT,
-      mode               TEXT,
-      frequency_hz       INTEGER,
-      spot_time_utc      TEXT NOT NULL,
-      park_lat           REAL,
-      park_lon           REAL,
-      spotter_lat        REAL,
-      spotter_lon        REAL,
-      distance_km        REAL,
-      azimuth_deg        REAL,
-      propagation_score  REAL,
-      propagation_meta   TEXT,
-      created_at_utc     TEXT NOT NULL,
-      FOREIGN KEY(spot_id) REFERENCES pota_spot_history(spot_id) ON DELETE CASCADE
-    );
-    """)
-    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_pota_edges_spotid ON pota_heard_edges(spot_id);")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_pota_edges_park_time ON pota_heard_edges(park_ref, spot_time_utc);")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_pota_edges_band_time ON pota_heard_edges(band, spot_time_utc);")
-    conn.commit()
 
+# -------------------------
+# Main
+# -------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--db", help="override path to spots.sqlite (optional)")
     ap.add_argument("--limit", type=int, default=2000, help="Max edges to build per run")
-    ap.add_argument("--minutes", type=int, default=0, help="Only consider history in the last N minutes (0 = all)")
+    ap.add_argument("--minutes", type=int, default=0, help="Only consider history in last N minutes (0 = all)")
     args = ap.parse_args()
 
-    db_path = args.db if args.db else spots_db_path()
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    ensure_edges_table(conn)
+    conn = pg_connect()
 
     where_time = ""
     params = []
+
     if args.minutes and args.minutes > 0:
-        # ISO string compare works because you store times as "YYYY-MM-DDTHH:MM:SSZ"
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=args.minutes)
         cutoff_iso = cutoff.replace(microsecond=0).isoformat().replace("+00:00","Z")
-        where_time = "AND h.spot_time_utc >= ?"
+        where_time = "AND h.spot_time_utc >= %s"
         params.append(cutoff_iso)
 
     # Pull history rows that:
@@ -101,56 +86,75 @@ def main():
       WHERE e.spot_id IS NULL
         {where_time}
       ORDER BY h.spot_time_utc DESC
-      LIMIT ?
+      LIMIT %s
     """
 
     params.append(args.limit)
 
-    rows = conn.execute(query, tuple(params)).fetchall()
+    with conn.cursor() as cur:
+        cur.execute(query, tuple(params))
+        rows = cur.fetchall()
+
     print(f"[info] building edges for {len(rows)} history rows (limit={args.limit})")
 
-    ins = 0
     created = nowz()
-    sql_ins = """
-      INSERT OR IGNORE INTO pota_heard_edges
+    inserted = 0
+
+    insert_sql = """
+      INSERT INTO pota_heard_edges
       (spot_id, park_ref, activator_call, spotter_call,
-      band, mode, frequency_hz, spot_time_utc,
-      park_lat, park_lon, spotter_lat, spotter_lon,
-      distance_km, azimuth_deg, propagation_score, propagation_meta,
-      created_at_utc)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
+       band, mode, frequency_hz, spot_time_utc,
+       park_lat, park_lon, spotter_lat, spotter_lon,
+       distance_km, azimuth_deg, propagation_score,
+       propagation_meta, created_at_utc)
+      VALUES
+      (%s, %s, %s, %s,
+       %s, %s, %s, %s,
+       %s, %s, %s, %s,
+       %s, NULL, NULL,
+       NULL, %s)
     """
 
-    cur = conn.cursor()
-    for r in rows:
-        (spot_id, park_ref, activator, spotter, band, mode, freq_hz, spot_time,
-         park_lat, park_lon, spot_lat, spot_lon) = r
+    with conn.cursor() as cur:
+        for (
+            spot_id, spot_time, activator, park_ref,
+            spotter_call, spotter_base, band, mode, freq_hz,
+            park_lat, park_lon, spot_lat, spot_lon
+        ) in rows:
 
-        dist = haversine_km(float(park_lat), float(park_lon), float(spot_lat), float(spot_lon))
+            dist = haversine_km(
+                float(park_lat), float(park_lon),
+                float(spot_lat), float(spot_lon)
+            )
 
-        cur.execute(sql_ins, (
-            int(spot_id),
-            park_ref,
-            activator,
-            spotter,
-            band,
-            mode,
-            freq_hz,
-            spot_time,
-            float(park_lat),
-            float(park_lon),
-            float(spot_lat),
-            float(spot_lon),
-            float(dist),
-            created
-        ))
-        if cur.rowcount == 1:
-            ins += 1
+            cur.execute(
+                insert_sql,
+                (
+                    int(spot_id),
+                    park_ref,
+                    activator,
+                    spotter_call,
+                    band,
+                    mode,
+                    freq_hz,
+                    spot_time,
+                    float(park_lat),
+                    float(park_lon),
+                    float(spot_lat),
+                    float(spot_lon),
+                    float(dist),
+                    created,
+                ),
+            )
+
+            if cur.rowcount == 1:
+                inserted += 1
 
     conn.commit()
     conn.close()
-    print(f"[done] inserted {ins} edges into pota_heard_edges")
+
+    print(f"[done] inserted {inserted} edges into pota_heard_edges")
+
 
 if __name__ == "__main__":
-    from datetime import timedelta  # keep local import minimal
     main()
