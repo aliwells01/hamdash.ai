@@ -2,29 +2,56 @@
 import os
 import time
 import json
-import sqlite3
+
 import subprocess
 from typing import Any, Dict, List, Optional
+import os
+import psycopg
+
+
 
 from aiohttp import web
 
-DB_DEFAULT = "/Users/aw/documents/hobbies/ham/radio_intel/data/spots.sqlite"
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RUN_LIVE_PATH = os.path.join(BASE_DIR, "run_live.py")
 
 run_live_proc: Optional[subprocess.Popen] = None
 
-
-def _db_path(req: web.Request) -> str:
-    return req.query.get("db") or DB_DEFAULT
-
-
-def _table_cols(conn: sqlite3.Connection, table: str) -> List[str]:
-    cur = conn.execute(f"PRAGMA table_info({table})")
-    return [r[1] for r in cur.fetchall()]
+def pg_connect():
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL is not set (use Render Internal Database URL)")
+    return psycopg.connect(url)
 
 
-def _safe_select_recent_edges(conn: sqlite3.Connection, limit: int = 50) -> List[Dict[str, Any]]:
+
+def _pg_url(req: web.Request) -> str:
+    # Render: set DATABASE_URL in the Web Service Environment
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        # Optional: allow overriding from querystring for local testing
+        url = req.query.get("pg")
+    if not url:
+        raise RuntimeError("DATABASE_URL is not set (and no ?pg= provided)")
+    return url
+
+
+
+def _table_cols(conn: psycopg.Connection, table: str) -> List[str]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+            """,
+            (table,),
+        )
+        return [r[0] for r in cur.fetchall()]
+
+
+def _safe_select_recent_edges(conn: psycopg.Connection, limit: int = 50) -> List[Dict[str, Any]]:
     # Try to read common columns from pota_heard_edges, but don’t fail if schema differs.
     cols = set(_table_cols(conn, "pota_heard_edges"))
     wanted = [
@@ -52,15 +79,17 @@ def _safe_select_recent_edges(conn: sqlite3.Connection, limit: int = 50) -> List
       SELECT {", ".join(select_exprs)}
       FROM pota_heard_edges
       ORDER BY spot_time_utc DESC
-      LIMIT ?
+      LIMIT %s
     """
-    cur = conn.execute(sql, (limit,))
-    rows = cur.fetchall()
-    names = [d[0] for d in cur.description]
+    with conn.cursor() as cur:
+        cur.execute(sql, (limit,))
+        rows = cur.fetchall()
+        names = [d[0] for d in cur.description]
     return [dict(zip(names, r)) for r in rows]
 
 
-def _safe_select_park_status(conn: sqlite3.Connection, limit: int = 50) -> List[Dict[str, Any]]:
+
+def _safe_select_park_status(conn: psycopg.Connection, limit: int = 50) -> List[Dict[str, Any]]:
     # Same idea: adapt to whatever columns exist in pota_park_status_now
     cols = set(_table_cols(conn, "pota_park_status_now"))
     wanted = [
@@ -88,11 +117,12 @@ def _safe_select_park_status(conn: sqlite3.Connection, limit: int = 50) -> List[
       SELECT {", ".join(select_exprs)}
       FROM pota_park_status_now
       ORDER BY {order_col} DESC
-      LIMIT ?
+      LIMIT %s
     """
-    cur = conn.execute(sql, (limit,))
-    rows = cur.fetchall()
-    names = [d[0] for d in cur.description]
+    with conn.cursor() as cur:
+        cur.execute(sql, (limit,))
+        rows = cur.fetchall()
+        names = [d[0] for d in cur.description]
     return [dict(zip(names, r)) for r in rows]
 
 
@@ -175,22 +205,43 @@ async def run_step(req: web.Request):
     return web.json_response(res, status=status)
 
 
+@routes.get("/api/pota/park_status_now")
+async def api_pota_park_status_now(req: web.Request):
+    try:
+        url = _pg_url(req)
+        with psycopg.connect(url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT park_ref, score
+                    FROM pota_park_status_now
+                    WHERE score IS NOT NULL
+                """)
+                rows = cur.fetchall()
+
+        out = {str(park_ref): float(score) for (park_ref, score) in rows}
+        return web.json_response(out)
+
+    except Exception as e:
+        print("[api_pota_park_status_now] ERROR:", repr(e))
+        return web.json_response({"ok": False, "error": repr(e)}, status=500)
+
+
+
 @routes.get("/api/data")
 async def get_data(req: web.Request):
-    db = _db_path(req)
+    url = _pg_url(req)
     limit = int(req.query.get("limit", "50"))
 
-    if not os.path.exists(db):
-        return web.json_response({"ok": False, "error": f"DB not found: {db}"}, status=400)
+    conn = psycopg.connect(url)
+    out: Dict[str, Any] = {"ok": True}
 
-    conn = sqlite3.connect(db)
-    conn.row_factory = sqlite3.Row
-    out: Dict[str, Any] = {"ok": True, "db": db}
 
     # Basic counts
     def count(table: str) -> int:
         try:
-            return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT COUNT(*) FROM {table}")
+                return cur.fetchone()[0]
         except Exception:
             return -1
 
