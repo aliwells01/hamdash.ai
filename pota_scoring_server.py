@@ -57,7 +57,7 @@ def _safe_select_recent_edges(conn: psycopg.Connection, limit: int = 50) -> List
     wanted = [
         ("spot_time_utc", "time_utc"),
         ("activator_call", "activator"),
-        ("park_ref", "park"),
+        ("park_ref"),
         ("spotter_call", "spotter"),
         ("band", "band"),
         ("mode", "mode"),
@@ -95,7 +95,7 @@ def _safe_select_park_status(conn: psycopg.Connection, limit: int = 50) -> List[
     wanted = [
         ("updated_utc", "updated_utc"),
         ("activator_call", "activator"),
-        ("park_ref", "park"),
+        ("park_ref"),
         ("edges", "edges"),
         ("uniq_states", "uniq_states"),
         ("score", "score"),
