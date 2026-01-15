@@ -52,6 +52,27 @@ DIPOLE_H_20M = 12.0
 
 from datetime import datetime, timezone
 
+import os
+import requests
+
+API_BASE = os.environ.get("API_BASE")  # e.g. https://hamdash-ai.onrender.com
+
+def post_snapshot(rows):
+    if not API_BASE:
+        return  # silently skip if not configured
+
+    try:
+        requests.post(
+            f"{API_BASE}/api/pota/active_snapshot",
+            json={"rows": rows},
+            timeout=10
+        )
+    except Exception as e:
+        print("[warn] snapshot post failed:", e)
+
+
+
+
 def _pick(obj, name):
     # works for both objects and dicts
     if isinstance(obj, dict):
@@ -1719,9 +1740,14 @@ def build_and_write(output_path: Path, no_dxwatch: bool, display_bands: Optional
     inserted = upsert_spots(db_path, spots)
    
 
-    rows = process(spots)
-    print(f"[dbg] build: rows={len(rows)}  counts={counts}")
-    build_html_and_rows(output_path, rows, counts, display_bands, display_modes, refresh_seconds)
+rows = process(spots) 
+
+# NEW: push live snapshot to API (non-fatal)
+post_snapshot(rows)
+
+print(f"[dbg] build: rows={len(rows)}  counts={counts}")
+build_html_and_rows(output_path, rows, counts, display_bands, display_modes, refresh_seconds)
+
 
 def serve_loop(output_path: Path, refresh_seconds: int, iterations: int, no_dxwatch: bool,
                display_bands: Optional[Set[int]], display_modes: Optional[Set[str]]) -> None:
