@@ -33,9 +33,39 @@
   .hunt{display:flex;align-items:center;gap:.35rem;font-size:.82rem}
   .hunt input{transform:scale(1.05)}
 
+
+
+
+  /* Score tag */
+  .scoreTag{
+    display:inline-flex;
+    align-items:center;
+    gap:.3rem;
+    border-radius:999px;
+    padding:.05rem .45rem;
+    font-size:.78rem;
+    font-weight:700;
+    border:1px solid rgba(0,0,0,.15);
+    white-space:nowrap;
+  }
+  .scoreDot{
+    width:10px;height:10px;border-radius:50%;
+    background:currentColor;
+    box-shadow:0 0 0 2px rgba(255,255,255,.20) inset;
+  }
+
+  /* Score color bands (tweak thresholds in JS to match) */
+  .score-none { background: rgba(100,116,139,.35); color: #cbd5e1; } /* slate-ish */
+  .score-low  { background: rgba(239,68,68,.30);  color: #fecaca; } /* red */
+  .score-mid  { background: rgba(245,158,11,.28); color: #fde68a; } /* amber */
+  .score-high { background: rgba(34,197,94,.25);  color: #bbf7d0; } /* green */
+
+
+  
+
   /* Truncation utilities */
   .truncate{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .clamp2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+ 
 
   /* Band coloring: left border + strong full-row background */
   .item{border-left:4px solid transparent}
@@ -146,6 +176,22 @@
 .mini-az { display:none; }
 .map-caption { display:none; }
 
+.score-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  padding:2px 8px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+  margin-left:8px;
+  color:#111;
+  border:1px solid rgba(0,0,0,.12);
+}
+.score-high{ background:#7CFC00; }
+.score-med{ background:#FFD54A; }
+.score-low{ background:#FF6B6B; }
 
 
 </style>
@@ -181,6 +227,7 @@
   </label>
   <label>Sort:
     <select id="sort" class="ctrl">
+      <option value="score">Score</option>
       <option value="time_desc">Newest</option>
       <option value="time_asc">Oldest</option>
       <option value="freq_asc">Freq ↑</option>
@@ -221,6 +268,9 @@
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 
 <script>
+
+const SCORE_URL = "https://hamdash-ai.onrender.com/api/pota/park_status_now";
+
 /* Data source with lat/lon in each spot */
 const API = "https://api.pota.app/spot/activator"; // includes latitude & longitude
 
@@ -236,7 +286,7 @@ $("#refresh").onclick = () => load(true);
 const t = s => s.spotTime || s.time || s.activatorLastSpotTime || s.createdAt || s.timestamp;
 const hunted = s => Boolean(s.hunted ?? s.worked ?? s.huntedByMe ?? s.workedByUser ?? false);
 const call = s => s.activator || s.call || s.callsign || "";
-const park = s => s.reference || s.park || s.parkId || "";
+const park = s => s.park_ref || s.reference || s.park || s.parkId || s.comment || "";
 const pname= s => s.name || s.parkName || s.entityName || "";
 const freq = s => s.frequency || s.freq || "";
 const mode = s => s.mode || "";
@@ -244,6 +294,30 @@ const note = s => s.comments || s.activatorLastComments || s.comment || "";
 const lat  = s => (s.latitude!=null)? Number(s.latitude) : null;
 const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
 const pstate = s => s.locationDesc || "";
+
+
+
+function scoreBadge(parkRef) {
+  const s = scoreMap[parkRef];
+  if (s == null) return "";
+
+  const score = Number(s);
+  let cls = "score-low";
+  if (score >= 80) cls = "score-high";
+  else if (score >= 50) cls = "score-med";
+
+  return `<span class="score-badge ${cls}" title="POTA score">${score.toFixed(1)}</span>`;
+}
+
+
+async function loadScores() {
+  try {
+    const r = await fetch(SCORE_URL, { cache: "no-store" });
+    scoreMap = await r.json();
+  } catch (e) {
+    console.warn("Score fetch failed", e);
+  }
+}
 
 function toKhz(x){
   const n = Number(x);
@@ -486,6 +560,20 @@ function normDate(s) {
   return new Date(ts);
 }
 
+function getScore(parkRef) {
+  const v = scoreMap[parkRef];
+  return v == null ? -Infinity : Number(v);
+}
+
+function sortRows(rows, sortKey) {
+  if (sortKey === "score") {
+    rows.sort((a,b) => getScore(park(b)) - getScore(park(a)));
+    return;
+  }
+  // existing sorts...
+}
+
+
 const cmp = {
   time_desc:(a,b)=> normDate(b)-normDate(a),
   time_asc:(a,b)=> normDate(a)-normDate(b),
@@ -540,6 +628,8 @@ function render(){
   // Use correct timestamp-based time_desc when sorting by time
   let sorter1 = cmp[sortSel.value] || ((a,b)=> new Date(t(b)) - new Date(t(a)));
   const sorter2 = (sortSel2 && sortSel2.value !== 'none') ? (cmp[sortSel2.value] || null) : null;
+
+  
 
   
 
@@ -615,6 +705,7 @@ items = all.slice()
       </div>
 
       <div class="right muted">
+        ${scoreBadge(p)}
         <span class="chipcs">${fTxt}</span>
         <label class="hunt">
           <input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted
@@ -944,8 +1035,18 @@ list.addEventListener('change', (e)=>{
   });
 })();
 
-load();
-setInterval(load, 60_000);
+(async function init() {
+  await loadScores();   // 🔥 LOAD SCORES FIRST
+  await load();         // then load POTA spots
+})();
+
+setInterval(async () => {
+  await loadScores();   // refresh scores
+  render();             // re-render so badges + sort update
+}, 60_000);
+
+setInterval(load, 60_000); // existing POTA refresh
+
 </script>
 
 
