@@ -12,6 +12,8 @@ import app as qrz_app            # QRZ, paste_sync, CAT control
 import radio_backend             # SQLite spot loader
 import sqlite3
 import psycopg
+import os
+
 from fastapi import HTTPException
 
 from db_paths import spots_db_path
