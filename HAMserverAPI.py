@@ -11,15 +11,24 @@ from fastapi.middleware.cors import CORSMiddleware
 import app as qrz_app            # QRZ, paste_sync, CAT control
 import radio_backend             # SQLite spot loader
 import sqlite3
+import psycopg
 from fastapi import HTTPException
 
 from db_paths import spots_db_path
+
 
 app = FastAPI(
     title="HAM Dashboard API",
     description="Backend service for ham-dashboard.html (POTA / SOTA / DX / CAT / QRZ)",
     version="1.0.0"
 )
+
+def pg_connect():
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL not set")
+    return psycopg.connect(url)
+
 
 def get_pota_scores_now():
     conn = sqlite3.connect(spots_db_path())
@@ -131,6 +140,17 @@ async def api_rig_freq():
 @app.get("/api/pota/park_status_now")
 def api_pota_park_status_now():
     try:
-        return get_pota_scores_now()
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT park_ref, score
+                    FROM pota_park_status_now
+                    WHERE score IS NOT NULL
+                """)
+                rows = cur.fetchall()
+
+        return {str(park): float(score) for park, score in rows}
+
     except Exception as e:
+        print("[api_pota_park_status_now] ERROR:", repr(e))
         raise HTTPException(status_code=500, detail=str(e))
