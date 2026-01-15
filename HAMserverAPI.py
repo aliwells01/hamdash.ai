@@ -156,3 +156,43 @@ def api_pota_park_status_now():
     except Exception as e:
         print("[api_pota_park_status_now] ERROR:", repr(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import json
+
+@app.post("/api/pota/active_snapshot")
+async def set_active_snapshot(req: Request):
+    data = await req.json()
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z")
+
+    # Store as compact JSON string
+    payload = json.dumps(data, separators=(",", ":"))
+
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+              INSERT INTO pota_active_snapshot (id, updated_at_utc, payload_json)
+              VALUES (1, %s, %s)
+              ON CONFLICT (id) DO UPDATE SET
+                updated_at_utc = EXCLUDED.updated_at_utc,
+                payload_json = EXCLUDED.payload_json
+            """, (now, payload))
+        conn.commit()
+
+    return {"ok": True, "updated_at_utc": now}
+
+
+@app.get("/api/pota/active_snapshot")
+def get_active_snapshot():
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT updated_at_utc, payload_json FROM pota_active_snapshot WHERE id=1")
+            row = cur.fetchone()
+
+    if not row:
+        return JSONResponse({"ok": False, "error": "no snapshot yet"}, status_code=404)
+
+    updated_at, payload = row
+    return {"ok": True, "updated_at_utc": updated_at, "payload": json.loads(payload)}
