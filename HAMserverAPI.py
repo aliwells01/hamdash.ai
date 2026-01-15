@@ -27,7 +27,7 @@ def get_pota_scores_now():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT park, score
+        SELECT park_ref, score
         FROM pota_park_status_now
         WHERE score IS NOT NULL
     """)
@@ -36,7 +36,7 @@ def get_pota_scores_now():
     conn.close()
 
     # return { "K-1234": 12.3, ... }
-    return {row["park"]: row["score"] for row in rows}
+    return {row["park_ref"]: row["score"] for row in rows}
 
 # Allow GitHub Pages or any frontend to use the API
 app.add_middleware(
