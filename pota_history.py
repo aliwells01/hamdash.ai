@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
 """
-Fetch POTA spot history for active activations and store into SQLite.
+Fetch POTA spot history for active activations and store into Postgres.
 
 Populates:
 - pota_spot_history (raw rows)
 - pota_activation_summary (fast aggregates)
 
-You provide the list of active activations as JSON (from your existing ssb_agent output),
-or we can later wire it directly to your DB/spot aggregator.
+You provide the list of active activations as JSON (from your existing ssb_agent output).
 """
 
 from __future__ import annotations
+
 import argparse
 import json
 import os
-import sqlite3
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from urllib.parse import quote
 
-from db_paths import spots_db_path
-
+import psycopg
 import requests
 import re
 
@@ -36,6 +34,37 @@ RE_TRAIL_COUNTER = re.compile(r"-(\d{1,2})$")
 
 # A conservative ham callsign pattern (not perfect globally, but good for extraction)
 RE_CALL_TOKEN = re.compile(r"\b[A-Z0-9]{1,3}\d[A-Z0-9]{1,4}\b", re.I)
+
+POTA_HISTORY_URL = "https://api.pota.app/v1/spots/{activator}/{park}"
+
+
+def pg_connect() -> psycopg.Connection:
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise SystemExit("DATABASE_URL is not set. Point it at your Render Postgres URL.")
+    # autocommit False so we can batch commits
+    return psycopg.connect(url)
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def parse_spot_time(s: str) -> datetime:
+    # POTA returns like "2026-01-08T20:18:41" (no Z) - treat as UTC
+    return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+
+
+def to_hz(freq_str: str | None) -> int | None:
+    """POTA history sample shows '14320' (kHz). Convert to Hz int."""
+    if not freq_str:
+        return None
+    try:
+        khz = float(freq_str)
+        return int(round(khz * 1000))
+    except Exception:
+        return None
+
 
 def normalize_callsign(raw_in: str) -> tuple[str, str]:
     """
@@ -57,21 +86,17 @@ def normalize_callsign(raw_in: str) -> tuple[str, str]:
     #    - "AB1CD/EA8" (suffix) -> want AB1CD
     if "/" in s:
         parts = [p for p in s.split("/") if p]
-        # If any part looks like a real callsign token, prefer that.
-        for p in reversed(parts):  # reversed gives suffix preference, but we'll check all
+        for p in reversed(parts):
             if RE_CALL_TOKEN.fullmatch(p):
                 s = p
                 break
         else:
-            # Otherwise, take the first part (common "CALL/P" case)
             s = parts[0]
 
     # 4) Strip portable suffixes like /P if still present
     s = RE_PORTABLE.sub("", s).strip()
 
-    # 5) Strip trailing "-<n>" counters ONLY if they came from a spotted artifact pattern.
-    #    If you want it more aggressive, remove unconditionally, but this is safer.
-    #    Here: remove if small number and the base before it matches a callsign token.
+    # 5) Strip trailing "-<n>" counters only if safe
     m = RE_TRAIL_COUNTER.search(s)
     if m:
         candidate = s[:m.start()]
@@ -81,7 +106,7 @@ def normalize_callsign(raw_in: str) -> tuple[str, str]:
     # 6) Final cleanup
     s = s.strip("- ").strip()
 
-    # 7) If s still isn't a recognizable token, try to extract one from inside the string
+    # 7) If still not a recognizable token, extract one
     if not RE_CALL_TOKEN.fullmatch(s):
         m2 = RE_CALL_TOKEN.search(s)
         if m2:
@@ -90,40 +115,7 @@ def normalize_callsign(raw_in: str) -> tuple[str, str]:
     return raw, s
 
 
-
-# ---- Config ----
-DEFAULT_DB = os.environ.get("RADIO_INTEL_DB", None)  # optional legacy override
-POTA_HISTORY_URL = "https://api.pota.app/v1/spots/{activator}/{park}"
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-def parse_spot_time(s: str) -> datetime:
-    # POTA returns like "2026-01-08T20:18:41" (no Z)
-    # treat as UTC
-    return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
-
-
-def to_hz(freq_str: str | None) -> int | None:
-    """POTA history sample shows '14320' (kHz). Convert to Hz int."""
-    if not freq_str:
-        return None
-    try:
-        khz = float(freq_str)
-        return int(round(khz * 1000))
-    except Exception:
-        return None
-
-
-def init_db(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
-
-
-def upsert_history_rows(conn: sqlite3.Connection, rows: list[dict], activator_call: str, park_ref: str) -> int:
+def upsert_history_rows(conn: psycopg.Connection, rows: list[dict], activator_call: str, park_ref: str) -> int:
     """
     Insert history rows. spot_id is primary key; duplicates are ignored.
     Returns inserted count.
@@ -132,93 +124,101 @@ def upsert_history_rows(conn: sqlite3.Connection, rows: list[dict], activator_ca
     fetched_at = utc_now_iso()
 
     sql = """
-    INSERT OR IGNORE INTO pota_spot_history
-    (spot_id, spot_time_utc, activator_call, park_ref, spotter_call, spotter_base, band, mode, frequency_hz, comments, fetched_at_utc)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO pota_spot_history
+      (spot_id, spot_time_utc, activator_call, park_ref,
+       spotter_call, spotter_base, band, mode, frequency_hz, comments, fetched_at_utc)
+    VALUES
+      (%s, %s, %s, %s,
+       %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (spot_id) DO NOTHING
     """
-    cur = conn.cursor()
-    for r in rows:
-        spot_id = r.get("spotId")
-        spot_time = r.get("spotTime")
-        spotter_raw, spotter_base = normalize_callsign(r.get("spotter"))
-        mode = r.get("mode")
-        freq_hz = to_hz(r.get("frequency"))
-        band = r.get("band")
-        source = r.get("source")
-        comments = r.get("comments")
 
-        if spot_id is None or not spot_time or not spotter_raw:
-            continue
+    with conn.cursor() as cur:
+        for r in rows:
+            spot_id = r.get("spotId")
+            spot_time = r.get("spotTime")
+            spotter_raw, spotter_base = normalize_callsign(r.get("spotter"))
+            mode = r.get("mode")
+            freq_hz = to_hz(r.get("frequency"))
+            band = r.get("band")
+            comments = r.get("comments")
 
+            if spot_id is None or not spot_time or not spotter_raw:
+                continue
 
-        # Convert "YYYY-MM-DDTHH:MM:SS" to "....Z"
-        try:
-            dt = parse_spot_time(spot_time)
-            spot_time_utc = dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        except Exception:
-            continue
+            try:
+                dt = parse_spot_time(spot_time)
+                spot_time_utc = dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            except Exception:
+                continue
 
-        cur.execute(sql, (
-        int(spot_id),
-        spot_time_utc,
-        activator_call,
-        park_ref,
-        spotter_raw,      # spotter_call (raw)
-        spotter_base,     # spotter_base (normalized)
-        band,
-        mode,
-        freq_hz,
-        comments,
-        fetched_at,
-        ))
-
-        if cur.rowcount == 1:
-            inserted += 1
+            cur.execute(
+                sql,
+                (
+                    int(spot_id),
+                    spot_time_utc,
+                    activator_call,
+                    park_ref,
+                    spotter_raw,
+                    spotter_base,
+                    band,
+                    mode,
+                    freq_hz,
+                    comments,
+                    fetched_at,
+                ),
+            )
+            # psycopg rowcount == 1 only when inserted (DO NOTHING => 0)
+            if cur.rowcount == 1:
+                inserted += 1
 
     conn.commit()
     return inserted
 
 
-def update_summary(conn: sqlite3.Connection, activator_call: str, park_ref: str) -> None:
+def update_summary(conn: psycopg.Connection, activator_call: str, park_ref: str) -> None:
     """
     Update pota_activation_summary for this activator+park based on pota_spot_history.
     """
-    # last_heard, total count, unique spotters
-    row = conn.execute(
-        """
-        SELECT
-          MAX(spot_time_utc) AS last_heard,
-          COUNT(*) AS n,
-          COUNT(DISTINCT spotter_call) AS u
-        FROM pota_spot_history
-        WHERE activator_call = ? AND park_ref = ?
-        """,
-        (activator_call, park_ref),
-    ).fetchone()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+              MAX(spot_time_utc) AS last_heard,
+              COUNT(*) AS n,
+              COUNT(DISTINCT spotter_call) AS u
+            FROM pota_spot_history
+            WHERE activator_call = %s AND park_ref = %s
+            """,
+            (activator_call, park_ref),
+        )
+        row = cur.fetchone()
 
-    last_heard, n, u = row[0], row[1], row[2]
-    if not last_heard:
+    if not row or not row[0]:
         return
 
+    last_heard, n, u = row[0], row[1], row[2]
     now = utc_now_iso()
-    conn.execute(
-        """
-        INSERT INTO pota_activation_summary
-          (activator_call, park_ref, last_heard_utc, history_count, unique_spotters, last_fetched_utc)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(activator_call, park_ref) DO UPDATE SET
-          last_heard_utc = excluded.last_heard_utc,
-          history_count = excluded.history_count,
-          unique_spotters = excluded.unique_spotters,
-          last_fetched_utc = excluded.last_fetched_utc
-        """,
-        (activator_call, park_ref, last_heard, int(n), int(u), now),
-    )
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO pota_activation_summary
+              (activator_call, park_ref, last_heard_utc, history_count, unique_spotters, last_fetched_utc)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (activator_call, park_ref) DO UPDATE SET
+              last_heard_utc = EXCLUDED.last_heard_utc,
+              history_count = EXCLUDED.history_count,
+              unique_spotters = EXCLUDED.unique_spotters,
+              last_fetched_utc = EXCLUDED.last_fetched_utc
+            """,
+            (activator_call, park_ref, last_heard, int(n), int(u), now),
+        )
+
     conn.commit()
 
 
 def fetch_history(activator_call: str, park_ref: str, timeout: float = 15.0) -> list[dict]:
-    # URL-encode activator (contains / sometimes)
     activator_enc = quote(activator_call, safe="")
     url = POTA_HISTORY_URL.format(activator=activator_enc, park=park_ref)
     r = requests.get(url, timeout=timeout)
@@ -226,7 +226,6 @@ def fetch_history(activator_call: str, park_ref: str, timeout: float = 15.0) -> 
     data = r.json()
     if isinstance(data, list):
         return data
-    # sometimes APIs wrap in dict; handle gracefully
     if isinstance(data, dict) and "spots" in data and isinstance(data["spots"], list):
         return data["spots"]
     return []
@@ -234,51 +233,53 @@ def fetch_history(activator_call: str, park_ref: str, timeout: float = 15.0) -> 
 
 def load_active_list_from_json(path: str) -> list[tuple[str, str]]:
     """
-    Expects a JSON list of "rows" like your ssb_agent output.
-    We look for:
+    Expects JSON list of rows like ssb_agent output.
+    Looks for:
       - activator call in 'call'
-      - park ref in 'comment' if it looks like US-1234 or K-1234
+      - park ref in 'comment'
+      - src == "POTA"
     Returns list of (activator_call, park_ref)
     """
     with open(path, "r", encoding="utf-8") as f:
         j = json.load(f)
 
-    pairs: set[tuple[str, str]] = set()
     if isinstance(j, dict) and "rows" in j:
         j = j["rows"]
 
     if not isinstance(j, list):
         return []
 
+    pairs: set[tuple[str, str]] = set()
     for r in j:
         if not isinstance(r, dict):
             continue
-        call = r.get("call")
-        park = r.get("comment")  # your example shows US-xxxx stored here
-        src = r.get("src")
-        if src != "POTA":
+        if r.get("src") != "POTA":
             continue
+        call = r.get("call")
+        park = r.get("comment")
         if not call or not park:
             continue
-        # minimal validation
         if isinstance(park, str) and ("-" in park) and len(park) >= 5:
             pairs.add((str(call), str(park)))
+
     return sorted(pairs)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--db", help="Override path to spots.sqlite (optional)")
     ap.add_argument("--active-json", required=True, help="Path to JSON rows from ssb_agent (e.g., ssb_picks.rows.json)")
     ap.add_argument("--limit", type=int, default=80, help="Max activations to fetch history for")
     ap.add_argument("--sleep", type=float, default=0.25, help="Sleep between API calls (be polite)")
     args = ap.parse_args()
 
-        # Optional: honor legacy env var if you still want it
-        db_path = args.db or DEFAULT_DB or str(spots_db_path())
+    activations = load_active_list_from_json(args.active_json)
+    if not activations:
+        raise SystemExit("No active POTA activations found in active JSON.")
 
-        print(f"[info] DB={db_path}")
-        conn = init_db(db_path)
+    activations = activations[: max(1, args.limit)]
+
+    print(f"[info] will fetch history for {len(activations)} activations (limit={args.limit})")
+    conn = pg_connect()
 
     total_inserted = 0
     for i, (activator_call, park_ref) in enumerate(activations, start=1):
@@ -293,6 +294,7 @@ def main():
 
         time.sleep(max(0.0, args.sleep))
 
+    conn.close()
     print(f"[done] inserted {total_inserted} new pota_spot_history rows")
 
 
