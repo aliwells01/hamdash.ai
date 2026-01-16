@@ -20,6 +20,8 @@ import html as _html
 import re, requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import os
+import requests
 
 
 # Prefer IPv4 (avoids IPv6 connect stalls on some networks)
@@ -70,6 +72,32 @@ def post_snapshot(rows):
     except Exception as e:
         print("[warn] snapshot post failed:", e)
 
+SPOTS_LIVE_POST_URL = os.environ.get("SPOTS_LIVE_POST_URL", "").strip()
+SPOTS_LIVE_POST_EVERY = int(os.environ.get("SPOTS_LIVE_POST_EVERY", "1"))  # post every N cycles
+
+_post_cycle = 0
+
+def post_spots_live(spots):
+    """
+    Post raw spot dicts (the ones returned by gather_spots) to the API.
+    Non-fatal: failures shouldn't stop ssb_agent.
+    """
+    global _post_cycle
+    _post_cycle += 1
+
+    if not SPOTS_LIVE_POST_URL:
+        return
+    if SPOTS_LIVE_POST_EVERY > 1 and (_post_cycle % SPOTS_LIVE_POST_EVERY) != 0:
+        return
+
+    try:
+        # Keep payload small-ish if you want:
+        # spots = spots[:1000]
+        r = requests.post(SPOTS_LIVE_POST_URL, json={"spots": spots}, timeout=15)
+        if r.status_code >= 300:
+            print("[warn] spots_live post failed:", r.status_code, r.text[:200])
+    except Exception as e:
+        print("[warn] spots_live post exception:", e)
 
 
 
@@ -1733,6 +1761,9 @@ def upsert_spots(db_path: str, spots: list) -> int:
 def build_and_write(output_path: Path, no_dxwatch: bool, display_bands: Optional[Set[int]],
                     display_modes: Optional[Set[str]], refresh_seconds: int) -> None:
     spots, counts = gather_spots(no_dxwatch=no_dxwatch)
+
+    # NEW: ship spots to Postgres via API
+    post_spots_live(spots)
 
     # NEW: persist to SQLite
     db_path = str(spots_db_path())  # honors SPOTS_DB if set, else repo_root/data/spots.sqlite
