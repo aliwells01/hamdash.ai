@@ -13,6 +13,11 @@ import radio_backend             # SQLite spot loader
 import sqlite3
 import psycopg
 import os
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from psycopg.types.json import Jsonb
 
 from fastapi import HTTPException
 
@@ -48,6 +53,95 @@ def get_pota_scores_now():
 
     # return { "K-1234": 12.3, ... }
     return {row["park_ref"]: row["score"] for row in rows}
+
+
+def _parse_ts_epoch(x: Any) -> float:
+    # Accept epoch seconds, epoch ms, or ISO strings.
+    if x is None:
+        return time.time()
+
+    # numeric
+    if isinstance(x, (int, float)):
+        v = float(x)
+        # if ms
+        if v > 1e12:
+            v = v / 1000.0
+        return v
+
+    # string
+    if isinstance(x, str):
+        s = x.strip()
+        # numeric string
+        try:
+            v = float(s)
+            if v > 1e12:
+                v = v / 1000.0
+            return v
+        except Exception:
+            pass
+
+        # ISO datetime string
+        try:
+            # allow "...Z"
+            if s.endswith("Z"):
+                s2 = s[:-1] + "+00:00"
+            else:
+                s2 = s
+            dt = datetime.fromisoformat(s2)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except Exception:
+            return time.time()
+
+    return time.time()
+
+
+def _spot_to_row(spot: Dict[str, Any]) -> Optional[tuple]:
+    # Callsign
+    callsign = (
+        spot.get("callsign") or spot.get("call") or spot.get("tx_call") or spot.get("rx_call")
+        or ""
+    ).strip().upper()
+    if not callsign:
+        return None
+
+    # Frequency to Hz
+    freq_hz = (
+        spot.get("freq_hz") or spot.get("frequency_hz") or spot.get("freq")
+    )
+    if freq_hz is None:
+        # sometimes MHz
+        mhz = spot.get("freq_mhz")
+        if mhz is not None:
+            try:
+                freq_hz = int(round(float(mhz) * 1_000_000))
+            except Exception:
+                freq_hz = None
+
+    try:
+        freq_hz = int(freq_hz)
+    except Exception:
+        return None
+
+    mode = (spot.get("mode") or spot.get("mode_raw") or "").strip()
+    program = (spot.get("program") or spot.get("comment") or spot.get("source") or "").strip()
+    source = (spot.get("src") or spot.get("source") or spot.get("origin") or "").strip()
+
+    snr = spot.get("snr")
+    if snr is None:
+        snr = spot.get("db") or spot.get("sig") or 0
+    try:
+        snr = float(snr)
+    except Exception:
+        snr = 0.0
+
+    ts_epoch = _parse_ts_epoch(spot.get("ts_epoch") or spot.get("ts") or spot.get("time") or spot.get("timestamp"))
+
+    # raw goes into JSONB
+    return (ts_epoch, callsign, freq_hz, mode, program, snr, source, Jsonb(spot))
+
+
 
 # Allow GitHub Pages or any frontend to use the API
 app.add_middleware(
@@ -196,3 +290,66 @@ def get_active_snapshot():
 
     updated_at, payload = row
     return {"ok": True, "updated_at_utc": updated_at, "payload": json.loads(payload)}
+
+
+
+
+# -----------------------------------------------------------
+# Endpoint for JSON upload
+# -----------------------------------------------------------
+
+
+@app.post("/api/spots_live/bulk")
+async def api_spots_live_bulk(payload: Any = Body(...)):
+    """
+    Accepts either:
+      - a list of spot dicts
+      - or { "spots": [...] }
+      - or { "rows": [...] }  (if you reuse ssb_agent rows)
+
+    Writes into Postgres spots_live.
+    """
+    try:
+        if isinstance(payload, list):
+            spots = payload
+        elif isinstance(payload, dict):
+            spots = payload.get("spots") or payload.get("rows") or []
+        else:
+            spots = []
+
+        if not isinstance(spots, list) or not spots:
+            return {"ok": True, "received": 0, "attempted": 0}
+
+        rows: List[tuple] = []
+        skipped = 0
+        for s in spots:
+            if not isinstance(s, dict):
+                skipped += 1
+                continue
+            r = _spot_to_row(s)
+            if r is None:
+                skipped += 1
+                continue
+            rows.append(r)
+
+        if not rows:
+            return {"ok": True, "received": len(spots), "attempted": 0, "skipped": skipped}
+
+        sql = """
+          INSERT INTO spots_live
+            (ts_epoch, callsign, freq_hz, mode, program, snr, source, raw)
+          VALUES
+            (%s, %s, %s, %s, %s, %s, %s, %s)
+          ON CONFLICT (callsign, freq_hz, mode, program, ts_epoch) DO NOTHING
+        """
+
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.executemany(sql, rows)
+            conn.commit()
+
+        return {"ok": True, "received": len(spots), "attempted": len(rows), "skipped": skipped}
+
+    except Exception as e:
+        print("[api_spots_live_bulk] ERROR:", repr(e))
+        raise HTTPException(status_code=500, detail=str(e))
