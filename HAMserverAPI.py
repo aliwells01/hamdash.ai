@@ -322,3 +322,17 @@ async def api_spots_live_bulk(payload: Any = Body(...)):
     except Exception as e:
         print("[api_spots_live_bulk] ERROR:", repr(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+    @app.get("/api/debug/spots_live_count")
+    def spots_live_count():
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM spots_live;")
+                n = cur.fetchone()[0]
+        return {"ok": True, "count": int(n)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
