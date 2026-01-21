@@ -1758,26 +1758,23 @@ def upsert_spots(db_path: str, spots: list) -> int:
 
 
 # ---------------------- Build/Serve ----------------------
+# ---------------------- Build/Serve ----------------------
 def build_and_write(output_path: Path, no_dxwatch: bool, display_bands: Optional[Set[int]],
                     display_modes: Optional[Set[str]], refresh_seconds: int) -> None:
     spots, counts = gather_spots(no_dxwatch=no_dxwatch)
 
-    # NEW: ship spots to Postgres via API
+    # NEW: ship spots to Postgres via API (non-fatal)
     post_spots_live(spots)
 
-    # NEW: persist to SQLite
+    # Optional: keep SQLite persistence if you still want it locally
     db_path = str(spots_db_path())  # honors SPOTS_DB if set, else repo_root/data/spots.sqlite
     ensure_db(db_path)
     inserted = upsert_spots(db_path, spots)
-   
 
-rows = process(spots) 
+    rows = process(spots)
+    print(f"[dbg] build: rows={len(rows)}  counts={counts}")
+    build_html_and_rows(output_path, rows, counts, display_bands, display_modes, refresh_seconds)
 
-# NEW: push live snapshot to API (non-fatal)
-post_snapshot(rows)
-
-print(f"[dbg] build: rows={len(rows)}  counts={counts}")
-build_html_and_rows(output_path, rows, counts, display_bands, display_modes, refresh_seconds)
 
 
 def serve_loop(output_path: Path, refresh_seconds: int, iterations: int, no_dxwatch: bool,
