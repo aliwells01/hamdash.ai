@@ -90,14 +90,64 @@ def main():
         for park_ref, n_edges, uniq, max_dist in rows:
             score = compute_score(n_edges, uniq, max_dist)
 
+            # ---- REQUIRED FIELDS (table has NOT NULL constraints) ----
+            activator_call  = ""            # placeholder for now
+            last_heard_utc  = now           # best available until refined
+            window_minutes  = window_min
+            unique_states   = 0
+            status          = "ok"
+
+            # ---- METRICS ----
+            edges = int(n_edges)
+            unique_spotters = int(uniq)
+
+            # Table has median_km / p75_km, not max_dist_km
+            median_km = None
+            p75_km    = float(max_dist) if max_dist is not None else None
+
+            last_freq_hz = None
+            last_band    = None
+            last_mode    = None
+
             cur.execute(
                 """
                 INSERT INTO pota_park_status_now
-                  (park_ref, n_edges, unique_spotters, max_dist_km, score, updated_at_utc)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (activator_call, park_ref, last_heard_utc, window_minutes,
+                edges, unique_spotters, unique_states,
+                median_km, p75_km,
+                score, status, updated_at_utc,
+                last_freq_hz, last_band, last_mode)
+                VALUES
+                (%s,%s,%s,%s,
+                %s,%s,%s,
+                %s,%s,
+                %s,%s,%s,
+                %s,%s,%s)
+                ON CONFLICT (park_ref) DO UPDATE SET
+                activator_call  = EXCLUDED.activator_call,
+                last_heard_utc  = EXCLUDED.last_heard_utc,
+                window_minutes  = EXCLUDED.window_minutes,
+                edges           = EXCLUDED.edges,
+                unique_spotters = EXCLUDED.unique_spotters,
+                unique_states   = EXCLUDED.unique_states,
+                median_km       = EXCLUDED.median_km,
+                p75_km          = EXCLUDED.p75_km,
+                score           = EXCLUDED.score,
+                status          = EXCLUDED.status,
+                updated_at_utc  = EXCLUDED.updated_at_utc,
+                last_freq_hz    = EXCLUDED.last_freq_hz,
+                last_band       = EXCLUDED.last_band,
+                last_mode       = EXCLUDED.last_mode
                 """,
-                (park_ref, n_edges, uniq, max_dist, score, now),
+                (
+                    activator_call, park_ref, last_heard_utc, window_minutes,
+                    edges, unique_spotters, unique_states,
+                    median_km, p75_km,
+                    float(score), status, now,
+                    last_freq_hz, last_band, last_mode,
+                ),
             )
+
 
     # 4) Build active-now table (activator + park)
     with conn.cursor() as cur:
