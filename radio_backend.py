@@ -256,7 +256,7 @@ async def api_spots(req):
             print(f"[/api/spots] DB missing or not set: {DB_PATH!r} -> demo")
             return demo()
 
-        con = sqlite3.connect(db_path)
+        sqlite3.connect(DB_PATH)
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
@@ -351,7 +351,7 @@ def load_spots():
             print(f"[load_spots] DB missing or not set: {DB_PATH!r} -> demo")
             return demo_list()
 
-        con = sqlite3.connect(db_path)
+        con = sqlite3.connect(DB_PATH)
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
