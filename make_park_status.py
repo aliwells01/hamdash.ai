@@ -209,9 +209,14 @@ def main():
             cur.execute(
                 """
                 INSERT INTO pota_park_status_bandmode_now
-                  (park_ref, band, mode, n_edges, unique_spotters,
-                   max_dist_km, score, updated_at_utc)
+                (park_ref, band, mode, edges, unique_spotters, p75_km, score, updated_at_utc)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (park_ref, band, mode) DO UPDATE SET
+                edges = EXCLUDED.edges,
+                unique_spotters = EXCLUDED.unique_spotters,
+                p75_km = EXCLUDED.p75_km,
+                score = EXCLUDED.score,
+                updated_at_utc = EXCLUDED.updated_at_utc
                 """,
                 (park_ref, band, mode, n_edges, uniq, max_dist, score, now),
             )
