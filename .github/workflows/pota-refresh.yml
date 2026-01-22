@@ -30,17 +30,17 @@ jobs:
 
       - name: Fetch active snapshot
         run: |
-            curl -s https://hamdash-ai.onrender.com/api/pota/active_snapshot \
+          curl -s https://hamdash-ai.onrender.com/api/pota/active_snapshot \
               | python3 - <<'PY'
-        import sys, json
-        j = json.load(sys.stdin)
-        payload = j.get("payload") or j
-        json.dump(payload, open("active_snapshot.json","w"))
-        PY
+          import sys, json
+          j = json.load(sys.stdin)
+          payload = j.get("payload") or j
+          json.dump(payload, open("active_snapshot.json","w"))
+          PY
 
-        - name: Run POTA Scoring
-          env:
-            DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          run: |
-            python3 run_pota_refresh.py --active-json active_snapshot.json
+      - name: Run POTA Scoring
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python3 run_pota_refresh.py --active-json active_snapshot.json
 
