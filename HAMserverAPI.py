@@ -191,26 +191,46 @@ async def set_active_snapshot(req: Request):
     return {"ok": True, "updated_at_utc": now}
 
 
+from fastapi.responses import JSONResponse
+import json
+
 @app.get("/api/pota/active_snapshot")
 def get_active_snapshot():
-    with pg_connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT updated_at_utc, payload_json FROM pota_active_snapshot WHERE id=1")
-            row = cur.fetchone()
+    try:
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT updated_at_utc, payload_json FROM pota_active_snapshot WHERE id=1")
+                row = cur.fetchone()
 
-    if not row:
-        return JSONResponse({"ok": False, "error": "no snapshot yet"}, status_code=404)
+        if not row:
+            return JSONResponse({"ok": False, "error": "no snapshot yet"}, status_code=404)
 
-    updated_at, payload = row
-        # payload_json might come back as a dict (JSON/JSONB) or a string (TEXT)
-    if isinstance(payload, (dict, list)):
-        payload_obj = payload
-    elif payload is None:
-        payload_obj = None
-    else:
-        payload_obj = json.loads(payload)
+        updated_at, payload = row
 
-    return {"ok": True, "updated_at_utc": updated_at, "payload": payload_obj}
+        # Debug info (safe)
+        payload_type = str(type(payload))
+
+        # Normalize payload into a Python object
+        if payload is None:
+            payload_obj = None
+        elif isinstance(payload, (dict, list)):
+            payload_obj = payload
+        elif isinstance(payload, (bytes, bytearray, memoryview)):
+            payload_obj = json.loads(bytes(payload).decode("utf-8", errors="replace"))
+        elif isinstance(payload, str):
+            payload_obj = json.loads(payload)
+        else:
+            # Last resort: try json.loads on stringified payload
+            payload_obj = json.loads(str(payload))
+
+        return {"ok": True, "updated_at_utc": updated_at, "payload": payload_obj, "payload_type": payload_type}
+
+    except Exception as e:
+        return JSONResponse(
+            {"ok": False, "error": str(e), "error_type": str(type(e))},
+            status_code=500
+        )
+
 
 
 
