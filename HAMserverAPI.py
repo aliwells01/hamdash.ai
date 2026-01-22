@@ -202,7 +202,16 @@ def get_active_snapshot():
         return JSONResponse({"ok": False, "error": "no snapshot yet"}, status_code=404)
 
     updated_at, payload = row
-    return {"ok": True, "updated_at_utc": updated_at, "payload": json.loads(payload)}
+        # payload_json might come back as a dict (JSON/JSONB) or a string (TEXT)
+    if isinstance(payload, (dict, list)):
+        payload_obj = payload
+    elif payload is None:
+        payload_obj = None
+    else:
+        payload_obj = json.loads(payload)
+
+    return {"ok": True, "updated_at_utc": updated_at, "payload": payload_obj}
+
 
 
 
