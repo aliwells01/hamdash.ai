@@ -57,47 +57,30 @@ from datetime import datetime, timezone
 import os
 import requests
 
-API_BASE = os.environ.get("API_BASE")  # e.g. https://hamdash-ai.onrender.com
+POTA_ACTIVE_SNAPSHOT_POST_URL = os.environ.get("POTA_ACTIVE_SNAPSHOT_POST_URL", "").strip()
+API_BASE = os.environ.get("API_BASE", "").strip()  # optional legacy support
 
 def post_snapshot(rows):
-    if not API_BASE:
-        return  # silently skip if not configured
+    """
+    Post active POTA rows to the API snapshot endpoint.
+    Prefer explicit POTA_ACTIVE_SNAPSHOT_POST_URL; fall back to API_BASE if set.
+    Non-fatal by default (matches your style), but logs HTTP errors.
+    """
+    url = POTA_ACTIVE_SNAPSHOT_POST_URL
+    if not url and API_BASE:
+        url = f"{API_BASE}/api/pota/active_snapshot"
+    if not url:
+        return  # skip if not configured
 
     try:
-        requests.post(
-            f"{API_BASE}/api/pota/active_snapshot",
-            json={"rows": rows},
-            timeout=10
-        )
-    except Exception as e:
-        print("[warn] snapshot post failed:", e)
-
-SPOTS_LIVE_POST_URL = os.environ.get("SPOTS_LIVE_POST_URL", "").strip()
-SPOTS_LIVE_POST_EVERY = int(os.environ.get("SPOTS_LIVE_POST_EVERY", "1"))  # post every N cycles
-
-_post_cycle = 0
-
-def post_spots_live(spots):
-    """
-    Post raw spot dicts (the ones returned by gather_spots) to the API.
-    Non-fatal: failures shouldn't stop ssb_agent.
-    """
-    global _post_cycle
-    _post_cycle += 1
-
-    if not SPOTS_LIVE_POST_URL:
-        return
-    if SPOTS_LIVE_POST_EVERY > 1 and (_post_cycle % SPOTS_LIVE_POST_EVERY) != 0:
-        return
-
-    try:
-        # Keep payload small-ish if you want:
-        # spots = spots[:1000]
-        r = requests.post(SPOTS_LIVE_POST_URL, json={"spots": spots}, timeout=15)
+        r = requests.post(url, json={"rows": rows}, timeout=15)
         if r.status_code >= 300:
-            print("[warn] spots_live post failed:", r.status_code, r.text[:200])
+            print("[warn] active_snapshot post failed:", r.status_code, r.text[:300])
+        else:
+            print("[info] active_snapshot posted:", r.status_code)
     except Exception as e:
-        print("[warn] spots_live post exception:", e)
+        print("[warn] active_snapshot post exception:", e)
+
 
 
 
@@ -1772,6 +1755,7 @@ def build_and_write(output_path: Path, no_dxwatch: bool, display_bands: Optional
     inserted = upsert_spots(db_path, spots)
 
     rows = process(spots)
+    post_snapshot(rows)  
     print(f"[dbg] build: rows={len(rows)}  counts={counts}")
     build_html_and_rows(output_path, rows, counts, display_bands, display_modes, refresh_seconds)
 
