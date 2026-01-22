@@ -34,9 +34,9 @@ def norm01(x, lo, hi):
     return max(0.0, min(1.0, (x - lo) / (hi - lo)))
 
 
-def compute_score(n_edges, unique_spotters, max_dist_km):
+def compute_score(edges, unique_spotters, max_dist_km):
     # This should match your previous behavior
-    s_edges = norm01(n_edges, 1, 15)
+    s_edges = norm01(edges, 1, 15)
     s_unique = norm01(unique_spotters, 1, 12)
     s_dist = norm01(max_dist_km, 50, 6000)
     return round(100.0 * (0.4 * s_edges + 0.35 * s_unique + 0.25 * s_dist), 6)
@@ -87,8 +87,8 @@ def main():
 
     # 3) Insert park-level status + score
     with conn.cursor() as cur:
-        for park_ref, n_edges, uniq, max_dist in rows:
-            score = compute_score(n_edges, uniq, max_dist)
+        for park_ref, edges, unique_spotters, max_dist in rows:
+            score = compute_score(edges, unique_spotters, max_dist)
 
             # ---- REQUIRED FIELDS (table has NOT NULL constraints) ----
             activator_call  = ""            # placeholder for now
@@ -98,8 +98,8 @@ def main():
             status          = "ok"
 
             # ---- METRICS ----
-            edges = int(n_edges)
-            unique_spotters = int(uniq)
+            edges = int(edges)
+            unique_spotters = int(unique_spotters)
 
             # Table has median_km / p75_km, not max_dist_km
             median_km = None
@@ -185,43 +185,91 @@ def main():
             rank += 1
 
     # 5) Band/mode breakout
+    # ---- Band/Mode status rows (Postgres schema-aligned) ----
+    cutoff_iso = cutoff.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
     with conn.cursor() as cur:
         cur.execute(
             """
             SELECT
-              h.park_ref,
-              h.band,
-              h.mode,
-              COUNT(*) AS n_edges,
-              COUNT(DISTINCT h.spotter_call) AS unique_spotters,
-              MAX(e.distance_km) AS max_dist_km
-            FROM pota_spot_history h
-            JOIN pota_heard_edges e ON e.spot_id = h.spot_id
+            h.activator_call,
+            h.park_ref,
+            h.band,
+            h.mode,
+            MAX(h.spot_time_utc)                                  AS last_heard_utc,
+            %s::bigint                                            AS window_minutes,
+            COUNT(*)::bigint                                      AS edges,
+            COUNT(DISTINCT h.spotter_call)::bigint                 AS unique_spotters,
+            COUNT(DISTINCT c.state)::bigint                        AS unique_states,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY h.distance_km) AS median_km,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY h.distance_km) AS p75_km,
+            MAX(h.frequency_hz)::bigint                            AS last_freq_hz
+            FROM pota_heard_edges h
+            LEFT JOIN callsign_location c
+            ON c.callsign = COALESCE(h.spotter_call, '')
             WHERE h.spot_time_utc >= %s
-            GROUP BY h.park_ref, h.band, h.mode
+            GROUP BY h.activator_call, h.park_ref, h.band, h.mode
+            ORDER BY edges DESC
             """,
-            (cutoff_iso,),
+            (int(window_min), cutoff_iso),
         )
-        rows = cur.fetchall()
+        bandmode_rows = cur.fetchall()
 
-        for park_ref, band, mode, n_edges, uniq, max_dist in rows:
-            score = compute_score(n_edges, uniq, max_dist)
+
+    with conn.cursor() as cur:
+        for (activator_call, park_ref, band, mode,
+            last_heard_utc, window_minutes, edges, unique_spotters, unique_states,
+            median_km, p75_km, last_freq_hz) in bandmode_rows:
+
+            # Your existing scoring function likely expects (edges, unique_spotters, something_km)
+            # If it expects max_dist, use p75_km (or median_km) as the distance proxy:
+            score = compute_score(int(edges), int(unique_spotters), float(p75_km or 0.0))
+
+            status = "ok"   # keep simple for now; later you can compute "active/stale"
+            now_iso = now   # reuse your existing now (already ISO Z string)
+
             cur.execute(
                 """
                 INSERT INTO pota_park_status_bandmode_now
-                (park_ref, band, mode, edges, unique_spotters, p75_km, score, updated_at_utc)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (activator_call, park_ref, band, mode,
+                last_heard_utc, window_minutes,
+                edges, unique_spotters, unique_states,
+                median_km, p75_km,
+                score, status, updated_at_utc,
+                last_freq_hz)
+                VALUES
+                (%s,%s,%s,%s,
+                %s,%s,
+                %s,%s,%s,
+                %s,%s,
+                %s,%s,%s,
+                %s)
                 ON CONFLICT (park_ref, band, mode) DO UPDATE SET
-                edges = EXCLUDED.edges,
+                activator_call  = EXCLUDED.activator_call,
+                last_heard_utc  = EXCLUDED.last_heard_utc,
+                window_minutes  = EXCLUDED.window_minutes,
+                edges           = EXCLUDED.edges,
                 unique_spotters = EXCLUDED.unique_spotters,
-                p75_km = EXCLUDED.p75_km,
-                score = EXCLUDED.score,
-                updated_at_utc = EXCLUDED.updated_at_utc
+                unique_states   = EXCLUDED.unique_states,
+                median_km       = EXCLUDED.median_km,
+                p75_km          = EXCLUDED.p75_km,
+                score           = EXCLUDED.score,
+                status          = EXCLUDED.status,
+                updated_at_utc  = EXCLUDED.updated_at_utc,
+                last_freq_hz    = EXCLUDED.last_freq_hz
                 """,
-                (park_ref, band, mode, n_edges, uniq, max_dist, score, now),
+                (
+                    activator_call, park_ref, band, mode,
+                    last_heard_utc, int(window_minutes),
+                    int(edges), int(unique_spotters), int(unique_states),
+                    median_km, p75_km,
+                    float(score), status, now_iso,
+                    last_freq_hz,
+                ),
             )
 
-    conn.commit()
+        conn.commit()
+
     conn.close()
     print(f"[done] updated pota park status (window={window_min} min)")
 
