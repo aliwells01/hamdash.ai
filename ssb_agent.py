@@ -1746,8 +1746,7 @@ def build_and_write(output_path: Path, no_dxwatch: bool, display_bands: Optional
                     display_modes: Optional[Set[str]], refresh_seconds: int) -> None:
     spots, counts = gather_spots(no_dxwatch=no_dxwatch)
 
-    # NEW: ship spots to Postgres via API (non-fatal)
-    post_spots_live(spots)
+ 
 
     # Optional: keep SQLite persistence if you still want it locally
     db_path = str(spots_db_path())  # honors SPOTS_DB if set, else repo_root/data/spots.sqlite
