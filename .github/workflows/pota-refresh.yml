@@ -1,0 +1,35 @@
+name: POTA Refresh
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run SSB Agent
+        env:
+          SPOTS_LIVE_POST_URL: ${{ secrets.SPOTS_LIVE_POST_URL }}
+          POTA_ACTIVE_SNAPSHOT_POST_URL: ${{ secrets.POTA_ACTIVE_SNAPSHOT_POST_URL }}
+        run: |
+          python3 ssb_agent.py --iterations 1
+
+      - name: Run POTA Scoring
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python3 run_pota_refresh.py --active-url https://hamdash-ai.onrender.com/api/pota/active_snapshot
