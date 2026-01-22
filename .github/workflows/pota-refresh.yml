@@ -19,28 +19,25 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          python3 -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run SSB Agent
+      - name: Run SSB Agent (one pass)
         env:
           SPOTS_LIVE_POST_URL: ${{ secrets.SPOTS_LIVE_POST_URL }}
           POTA_ACTIVE_SNAPSHOT_POST_URL: ${{ secrets.POTA_ACTIVE_SNAPSHOT_POST_URL }}
         run: |
           python3 ssb_agent.py --iterations 1
 
-      - name: Fetch active snapshot
+      - name: Fetch active snapshot to file
         run: |
-          curl -s https://hamdash-ai.onrender.com/api/pota/active_snapshot \
-              | python3 - <<'PY'
-          import sys, json
-          j = json.load(sys.stdin)
-          payload = j.get("payload") or j
-          json.dump(payload, open("active_snapshot.json","w"))
-          PY
+          set -euo pipefail
+          curl -fsS "https://hamdash-ai.onrender.com/api/pota/active_snapshot" -o active_snapshot_raw.json
+          python3 -c "import json; j=json.load(open('active_snapshot_raw.json')); payload=j.get('payload', j); json.dump(payload, open('active_snapshot.json','w'))"
+          python3 -c "import json; j=json.load(open('active_snapshot.json')); print('active_snapshot keys:', list(j)[:5])"
 
-      - name: Run POTA Scoring
+      - name: Run POTA scoring pipeline
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           python3 run_pota_refresh.py --active-json active_snapshot.json
-
