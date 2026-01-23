@@ -116,41 +116,49 @@ def main():
     """
 
     with conn.cursor() as cur:
-        for (
-            spot_id, spot_time, activator, park_ref,
-            spotter_call, spotter_base, band, mode, freq_hz,
-            park_lat, park_lon, spot_lat, spot_lon
-        ) in rows:
+      for (
+          spot_id, spot_time, activator, park_ref,
+          spotter_call, spotter_base, band, mode, freq_hz,
+          park_lat, park_lon, spot_lat, spot_lon
+      ) in rows:
 
+        # Skip rows missing any coordinates (prevents float(None) crash)
+        if park_lat is None or park_lon is None or spot_lat is None or spot_lon is None:
+            continue
+
+        try:
             dist = haversine_km(
                 float(park_lat), float(park_lon),
                 float(spot_lat), float(spot_lon)
             )
+        except Exception:
+            continue
 
-            cur.execute(
-                insert_sql,
-                (
-                    int(spot_id),
-                    park_ref,
-                    activator,
-                    spotter_call,
-                    band,
-                    mode,
-                    freq_hz,
-                    spot_time,
-                    float(park_lat),
-                    float(park_lon),
-                    float(spot_lat),
-                    float(spot_lon),
-                    float(dist),
-                    created,
-                ),
-            )
+        cur.execute(
+            insert_sql,
+            (
+                int(spot_id),
+                park_ref,
+                activator,
+                spotter_call,
+                band,
+                mode,
+                freq_hz,
+                spot_time,
+                float(park_lat),
+                float(park_lon),
+                float(spot_lat),
+                float(spot_lon),
+                float(dist),
+                created,
+            ),
+        )
 
-            if cur.rowcount == 1:
-                inserted += 1
+        if cur.rowcount == 1:
+            inserted += 1
 
     conn.commit()
+
     conn.close()
 
     print(f"[done] inserted {inserted} edges into pota_heard_edges")
