@@ -702,12 +702,13 @@ items = all.slice()
              
             : ``
         }
+        ${s.mode}${s.mode ? `<span class="chip">${s.mode}</span>` : ``}
         ${distTxt ? `<span class="chip">${distTxt} from GA</span>` : ``}
          
       </div>
 
       <div class="right muted">
-       <span class="chipcs"> ${s.mode}</span>
+      
         ${scoreBadge(p)}
         <span class="chipcs">${fTxt}</span>
         <label class="hunt">
