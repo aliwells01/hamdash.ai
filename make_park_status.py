@@ -47,7 +47,7 @@ def compute_score(edges, unique_spotters, max_dist_km):
 # -------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--window-min", type=int, default=10)
+    ap.add_argument("--window-min", type=int, default=60)
     ap.add_argument("--min-edges", type=int, default=2, help="ignore activations with fewer edges than this")
     args = ap.parse_args()
 
