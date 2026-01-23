@@ -35,7 +35,7 @@ var aURL = [
   [
     "#ff9100",
     "HAMCLOCK",
-    "http://10.0.0.119:8081/live.html",
+    "http://localhost:8081/live.html",
     null,
     "L"
   ],
@@ -76,7 +76,7 @@ var aIMG = [
   ],
   [
     "HAMCLOCK",
-    "http://10.0.0.119:8080/get_capture.bmp"
+    "http://localhost:8081/live.html"
   ],
   [
     "ISS POSITION",
