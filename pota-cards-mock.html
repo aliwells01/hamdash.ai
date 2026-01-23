@@ -575,6 +575,7 @@ function sortRows(rows, sortKey) {
 
 
 const cmp = {
+  score: (a, b) => getScore(park(b)) - getScore(park(a)), 
   time_desc:(a,b)=> normDate(b)-normDate(a),
   time_asc:(a,b)=> normDate(a)-normDate(b),
   freq_asc:(a,b)=> freq(a)-freq(b),
