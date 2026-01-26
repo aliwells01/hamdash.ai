@@ -40,6 +40,54 @@ def run_step(args, cwd: Path):
 
 
 
+# -------------------------
+# Solar indicies
+# -------------------------
+
+import requests
+from datetime import datetime, timezone
+from xml.etree import ElementTree as ET
+
+HAMQSL_SOLAR_URL = "https://www.hamqsl.com/solarxml.php"
+
+def fetch_and_store_solar_indices(conn):
+    """
+    Fetch SFI / A / K from HamQSL and store in solar_indices.
+    Runs once per workflow execution.
+    """
+    try:
+        r = requests.get(HAMQSL_SOLAR_URL, timeout=10)
+        r.raise_for_status()
+
+        root = ET.fromstring(r.text)
+
+        sfi = int(root.findtext(".//solarflux", default="0"))
+        a_index = int(root.findtext(".//aindex", default="0"))
+        k_index = float(root.findtext(".//kindex", default="0"))
+
+        ts_utc = datetime.now(timezone.utc).isoformat()
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO solar_indices (ts_utc, sfi, a_index, k_index, source)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (ts_utc) DO NOTHING
+                """,
+                (ts_utc, sfi, a_index, k_index, "hamqsl"),
+            )
+
+        conn.commit()
+        logger.info(f"[solar] SFI={sfi} A={a_index} K={k_index}")
+
+    except Exception as e:
+        logger.warning(f"[solar] failed to fetch solar indices: {e}")
+
+
+
+
+
+
 import os
 import psycopg
 from loguru import logger
@@ -199,6 +247,7 @@ def main():
     log("Computing band propagation status (prop_status_band)")
     db_url = os.environ["DATABASE_URL"]
     upsert_prop_status_band(db_url)
+    fetch_and_store_solar_indices(db_url)
 
     log("POTA refresh pipeline complete")
 
