@@ -265,6 +265,27 @@ def prop_status():
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
+# -----------------------------------------------------------
+# Solar indicies 
+# -----------------------------------------------------------
+
+
+@app.get("/api/prop/solar")
+def solar_now():
+    sql = """
+    SELECT ts_utc, sfi, a_index, k_index, source
+    FROM solar_indices
+    ORDER BY ts_utc::timestamptz DESC
+    LIMIT 1;
+    """
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            row = cur.fetchone()
+            if not row:
+                return {}
+            cols = [d.name for d in cur.description]
+            return dict(zip(cols, row))
 
 # -----------------------------------------------------------
 # Endpoint for JSON upload
