@@ -287,6 +287,78 @@ def solar_now():
             cols = [d.name for d in cur.description]
             return dict(zip(cols, row))
 
+@app.get("/api/prop/bands")
+def prop_bands():
+    # latest solar row
+    solar_sql = """
+    SELECT ts_utc, sfi, a_index, k_index, source
+    FROM solar_indices
+    ORDER BY ts_utc::timestamptz DESC
+    LIMIT 1;
+    """
+    bands_sql = """
+    SELECT band, score, status, edges, spotters, parks, median_km, p75_km, window_minutes, updated_at_utc
+    FROM prop_status_band
+    ORDER BY
+      CASE band
+        WHEN '160m' THEN 1 WHEN '80m' THEN 2 WHEN '60m' THEN 3 WHEN '40m' THEN 4
+        WHEN '30m' THEN 5 WHEN '20m' THEN 6 WHEN '17m' THEN 7 WHEN '15m' THEN 8
+        WHEN '12m' THEN 9 WHEN '10m' THEN 10 WHEN '6m' THEN 11
+        ELSE 99
+      END;
+    """
+    with pg_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(solar_sql)
+            solar_row = cur.fetchone()
+            solar = {}
+            if solar_row:
+                cols = [d.name for d in cur.description]
+                solar = dict(zip(cols, solar_row))
+
+            cur.execute(bands_sql)
+            band_cols = [d.name for d in cur.description]
+            bands = [dict(zip(band_cols, r)) for r in cur.fetchall()]
+
+    # compute physics score per band (simple heuristic)
+    sfi = float(solar.get("sfi") or 0)
+    kp  = float(solar.get("k_index") or 0)
+    a   = float(solar.get("a_index") or 0)
+
+    def clamp(x, lo=0.0, hi=1.0):
+        return max(lo, min(hi, x))
+
+    sfi_score = clamp((sfi - 60.0) / 110.0)   # 60..170 -> 0..1 approx
+    geomag = max(clamp(kp / 9.0), clamp(a / 80.0))
+
+    # band weights (tweak later)
+    weights = {
+        "160m": (0.05, 0.15),
+        "80m":  (0.10, 0.20),
+        "60m":  (0.20, 0.25),
+        "40m":  (0.30, 0.35),
+        "30m":  (0.45, 0.40),
+        "20m":  (0.60, 0.45),
+        "17m":  (0.70, 0.50),
+        "15m":  (0.80, 0.55),
+        "12m":  (0.90, 0.60),
+        "10m":  (1.00, 0.65),
+        "6m":   (1.00, 0.70),
+    }
+
+    for b in bands:
+        band = b.get("band")
+        w_sfi, w_g = weights.get(band, (0.5, 0.5))
+        phys = 100.0 * (w_sfi * sfi_score - w_g * geomag)
+        if phys < 0: phys = 0.0
+        if phys > 100: phys = 100.0
+        b["physics_score"] = round(phys, 1)
+
+    return {"solar": solar, "bands": bands}
+
+
+
+
 # -----------------------------------------------------------
 # Endpoint for JSON upload
 # -----------------------------------------------------------
