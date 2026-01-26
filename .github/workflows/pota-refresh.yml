@@ -29,12 +29,36 @@ jobs:
         run: |
           python3 ssb_agent.py --iterations 1
 
-      - name: Fetch active snapshot to file
+      - name: Fetch active snapshot to file (retry + warmup)
         run: |
           set -euo pipefail
-          curl -fsS "https://hamdash-ai.onrender.com/api/pota/active_snapshot" -o active_snapshot_raw.json
+
+          SNAP_URL="https://hamdash-ai.onrender.com/api/pota/active_snapshot"
+
+          # Warm up Render (ignore failures)
+          curl -sS "https://hamdash-ai.onrender.com/" >/dev/null || true
+          sleep 2
+
+          # Retry snapshot fetch (handles 503 cold start / transient)
+          ok=0
+          for i in 1 2 3 4 5; do
+            echo "[info] fetch attempt $i..."
+            if curl -fsS "$SNAP_URL" -o active_snapshot_raw.json; then
+              ok=1
+              break
+            fi
+            echo "[warn] snapshot fetch failed; sleeping..."
+            sleep 8
+          done
+
+          if [ "$ok" -ne 1 ]; then
+            echo "[error] snapshot fetch failed after retries"
+            exit 1
+          fi
+
           python3 -c "import json; j=json.load(open('active_snapshot_raw.json')); payload=j.get('payload', j); json.dump(payload, open('active_snapshot.json','w'))"
           python3 -c "import json; j=json.load(open('active_snapshot.json')); print('active_snapshot keys:', list(j)[:5])"
+
 
       - name: Run POTA scoring pipeline
         env:
