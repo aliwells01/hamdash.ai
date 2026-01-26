@@ -79,7 +79,7 @@
       padding:12px 12px 10px;
       cursor:pointer;
       transition: filter 0.08s ease, transform 0.08s ease;
-      min-height:140px;
+      min-height:60px;
     }
     .card:hover{filter:brightness(1.05)}
     .card:active{transform:translateY(1px)}
@@ -119,6 +119,17 @@
       font-size:12px;
       line-height:1.35;
     }
+    .bar.small { 
+        height: 7px; margin-top: 6px; opacity: 0.9; 
+    }
+
+    .fill.phys { 
+        background: linear-gradient(90deg, rgba(245,158,11,0.75), rgba(239,68,68,0.85)); 
+    }
+    .meta.small {
+        margin-top: 6px; font-size: 11px; 
+    }
+
 
     /* Drawer */
     .drawer{
@@ -181,22 +192,23 @@
 </head>
 
 <body>
-<header>
-  <h1>Propagation Nowcast (POTA-derived score 1–100)</h1>
-  <div class="subrow">
-    <span class="pill"><span class="dot" id="freshDot"></span><span id="freshText">Loading…</span></span>
-    <span class="pill">QTH: <span class="k">Atlanta, GA</span></span>
-    <span class="pill">Endpoint: <span class="k" id="endpointLabel">/api/prop/status</span></span>
-    <button class="btn" id="reloadBtn">Reload</button>
-    <span class="pill">Auto-refresh: <span class="k" id="autoLabel">15s</span></span>
-  </div>
+
+<header style="display:none">
+  <span id="freshText"></span>
+  <span id="endpointLabel"></span>
+  <span id="autoLabel"></span>
+  <span id="solarLabel"></span>
+  <span class="dot" id="freshDot"></span>
+  <button id="reloadBtn"></button>
 </header>
 
 <div class="wrap">
   <div class="grid" id="grid"></div>
   <div class="note" id="note"></div>
 </div>
-
+<center>
+<a href="https://www.hamqsl.com/solar.html" title="Click to add Solar-Terrestrial Data to your website!"><img src="https://www.hamqsl.com/solarbc.php"></a>
+</center>
 <!-- Drawer -->
 <div class="drawer" id="drawer" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true" aria-label="Band details">
@@ -221,7 +233,9 @@
 
 <script>
 (function(){
-  const ENDPOINT = "https://hamdash-ai.onrender.com/api/prop/status";
+  const ENDPOINT = "https://hamdash-ai.onrender.com/api/prop/bands";
+const solarLabel = document.getElementById("solarLabel");
+
   const AUTO_REFRESH_MS = 15000;
 
   const grid = document.getElementById("grid");
@@ -257,15 +271,17 @@
     dScore.textContent = (row.score != null) ? Math.round(Number(row.score)) : "—";
     dUpdated.textContent = row.updated_at_utc ? ("updated: " + row.updated_at_utc) : "updated: —";
 
-    const fields = [
-      ["status", row.status],
-      ["window_minutes", row.window_minutes],
-      ["parks", row.parks],
-      ["edges", row.edges],
-      ["spotters", row.spotters],
-      ["median_km", fmtNum(row.median_km, 1)],
-      ["p75_km", fmtNum(row.p75_km, 1)]
-    ];
+        const fields = [
+        ["status", row.status],
+        ["score", row.score],
+        ["physics_score", row.physics_score],
+        ["window_minutes", row.window_minutes],
+        ["parks", row.parks],
+        ["edges", row.edges],
+        ["spotters", row.spotters],
+        ["median_km", fmtNum(row.median_km, 1)],
+        ["p75_km", fmtNum(row.p75_km, 1)]
+        ];
 
     dTable.innerHTML = fields.map(([k,v]) =>
       `<tr><th class="mono">${escapeHtml(k)}</th><td class="mono">${escapeHtml(v ?? "—")}</td></tr>`
@@ -339,41 +355,48 @@
     return map[b] ?? 99;
   }
 
-  function render(rows){
+  function render(rows, solar){
     rows = (rows || []).slice().sort((a,b)=>bandOrderKey(a.band)-bandOrderKey(b.band));
 
     const ageSec = computeGlobalFreshness(rows);
     setFreshness(ageSec);
 
+            if (solar && Object.keys(solar).length) {
+        const sfi = solar.sfi ?? "—";
+        const kp  = solar.k_index ?? "—";
+        const a   = solar.a_index ?? "—";
+        const ts  = solar.ts_utc ?? "";
+        solarLabel.textContent = `SFI ${sfi} • Kp ${kp} • A ${a}${ts ? " • " + ts : ""}`;
+        } else {
+        solarLabel.textContent = "—";
+        }
+
+
     grid.innerHTML = "";
     for(const r of rows){
       const score = (r.score != null) ? Math.round(Number(r.score)) : null;
       const fillPct = scoreToFill(score);
-
+        const phys = (r.physics_score != null) ? Math.round(Number(r.physics_score)) : null;
+        const physFill = scoreToFill(phys);
       const card = document.createElement("div");
       card.className = "card";
-      card.innerHTML = `
+            card.innerHTML = `
         <div class="top">
-          <div class="band">${escapeHtml(r.band ?? "—")}</div>
-          <div class="score">${score ?? "—"}</div>
+            <div class="band">${escapeHtml(r.band ?? "—")}</div>
+            <div class="score">${score ?? "—"}</div>
         </div>
-        <div class="meta">
-          <span>parks <span class="k">${escapeHtml(r.parks ?? "—")}</span></span>
-          <span>edges <span class="k">${escapeHtml(r.edges ?? "—")}</span></span>
-          <span>spotters <span class="k">${escapeHtml(r.spotters ?? "—")}</span></span>
+
+
+
+        <div class="bar" title="Reality (POTA activity score 1–100)">
+            <div class="fill" style="width:${fillPct}%"></div>
         </div>
-        <div class="bar" title="Score 1–100">
-          <div class="fill" style="width:${fillPct}%"></div>
+
+        <div class="bar small" title="Physics (solar/geomagnetic heuristic 1–100)">
+            <div class="fill phys" style="width:${physFill}%"></div>
         </div>
-        <div class="note">
-          <span class="mono">median_km</span>: <span class="mono">${escapeHtml(fmtNum(r.median_km,1) ?? "—")}</span>
-          &nbsp;•&nbsp;
-          <span class="mono">p75_km</span>: <span class="mono">${escapeHtml(fmtNum(r.p75_km,1) ?? "—")}</span>
-          <br/>
-          <span class="muted mono">updated</span>: <span class="muted mono">${escapeHtml(r.updated_at_utc ?? "—")}</span>
-          ${r.status ? `&nbsp;•&nbsp;<span class="muted mono">status</span>: <span class="muted mono">${escapeHtml(r.status)}</span>` : ``}
-        </div>
-      `;
+        `;
+
       card.addEventListener("click", () => showDrawer(r));
       grid.appendChild(card);
     }
@@ -388,11 +411,11 @@
       note.textContent = "Loading…";
       const res = await fetch(ENDPOINT, { cache: "no-store" });
       if(!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json();
+      
+        const data = await res.json();
+        const rows = data.bands || [];
+        render(rows, data.solar || {});
 
-      // Support either {rows:[...]} or just [...]
-      const rows = Array.isArray(data) ? data : (data.rows || []);
-      render(rows);
     }catch(err){
       // Fallback: show mock data so you can test UI layout without backend
       console.warn("Failed to load endpoint; showing mock data:", err);
