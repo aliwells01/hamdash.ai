@@ -30,13 +30,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-def pg_connect():
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        raise RuntimeError("DATABASE_URL not set")
-    return psycopg.connect(url)
-
-
 def get_pota_scores_now():
     conn = sqlite3.connect(spots_db_path())
     conn.row_factory = sqlite3.Row
@@ -243,24 +236,9 @@ from fastapi import FastAPI
 
 @app.get("/api/prop/status")
 def prop_status():
-    if not DATABASE_URL:
-        raise HTTPException(
-            status_code=500,
-            detail="DATABASE_URL not set in Render web service"
-        )
-
     sql = """
-    SELECT
-      band,
-      score,
-      status,
-      edges,
-      spotters,
-      parks,
-      median_km,
-      p75_km,
-      window_minutes,
-      updated_at_utc
+    SELECT band, score, status, edges, spotters, parks,
+           median_km, p75_km, window_minutes, updated_at_utc
     FROM prop_status_band
     ORDER BY
       CASE band
@@ -270,20 +248,18 @@ def prop_status():
         ELSE 99
       END;
     """
-
     try:
-        with psycopg.connect(DATABASE_URL) as conn:
+        with pg_connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql)
                 cols = [d.name for d in cur.description]
                 return [dict(zip(cols, row)) for row in cur.fetchall()]
     except Exception as e:
-        logger.exception("prop_status query failed")
+        logger.exception("prop_status failed")
         raise HTTPException(
             status_code=500,
             detail=f"prop_status failed: {type(e).__name__}: {e}"
         )
-
 
 
 # -----------------------------------------------------------
