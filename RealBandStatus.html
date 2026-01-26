@@ -401,14 +401,13 @@ const solarLabel = document.getElementById("solarLabel");
       grid.appendChild(card);
     }
 
-    note.textContent = rows.length
-      ? "Showing 1–100 scores per band (POTA-derived). Click any band for raw metrics. If freshness is high (minutes old), your pipeline may be stale."
-      : "No rows returned. Confirm your FastAPI endpoint responds at /api/prop/status and that prop_status_band has data.";
+    
+     
   }
 
   async function load(){
     try{
-      note.textContent = "Loading…";
+      
       const res = await fetch(ENDPOINT, { cache: "no-store" });
       if(!res.ok) throw new Error("HTTP " + res.status);
       
