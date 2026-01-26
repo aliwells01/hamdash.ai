@@ -419,7 +419,10 @@ const solarLabel = document.getElementById("solarLabel");
                 </div>
                 </div>
 
-                <div class="spotters" title="Spotters">${escapeHtml(r.spotters ?? "—")} spotters</div>
+               <div class="spotters" title="Spotters">
+                    <div class="spottersNum">${escapeHtml(r.spotters ?? "—")}</div>
+                    <div class="spottersLbl">spotters</div>
+                </div>
             </div>
             `;
 
