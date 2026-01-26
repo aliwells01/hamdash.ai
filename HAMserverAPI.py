@@ -254,7 +254,7 @@ def prop_status():
         ELSE 99
       END;
     """
-    with psycopg.connect(DB_URL) as conn:
+    with psycopg.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
             cur.execute(sql)
             cols = [d.name for d in cur.description]
