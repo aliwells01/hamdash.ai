@@ -232,6 +232,33 @@ def get_active_snapshot():
         )
 
 
+# -----------------------------------------------------------
+# Real Band Status 
+# -----------------------------------------------------------
+
+import os
+import psycopg
+from fastapi import FastAPI
+
+
+@app.get("/api/prop/status")
+def prop_status():
+    sql = """
+    SELECT band, score, status, edges, spotters, parks, median_km, p75_km, window_minutes, updated_at_utc
+    FROM prop_status_band
+    ORDER BY
+      CASE band
+        WHEN '160m' THEN 1 WHEN '80m' THEN 2 WHEN '60m' THEN 3 WHEN '40m' THEN 4
+        WHEN '30m' THEN 5 WHEN '20m' THEN 6 WHEN '17m' THEN 7 WHEN '15m' THEN 8
+        WHEN '12m' THEN 9 WHEN '10m' THEN 10 WHEN '6m' THEN 11
+        ELSE 99
+      END;
+    """
+    with psycopg.connect(DB_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            cols = [d.name for d in cur.description]
+            return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
 
