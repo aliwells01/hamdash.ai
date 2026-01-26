@@ -179,7 +179,7 @@
       overflow:hidden;
     }
     .panelHead{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      display:flex; align-items:right;  gap:12px;
       padding:12px 14px;
       border-bottom:1px solid var(--border);
     }
@@ -239,24 +239,22 @@
 <!-- Drawer -->
 <div class="drawer" id="drawer" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true" aria-label="Band details">
-    <div class="panelHead">
-      <div class="panelTitle">
-        <div class="band" id="dBand">—</div>
-        <div class="score" id="dScore">—</div>
-        <div class="small muted" id="dUpdated">—</div>
+    
+    <div class="panelHead" >
+      <div class="panelTitle"style="display:none">
+        <span id="dBand"></span>
+        <span id="dScore"></span>
+        <span id="dUpdated"></span>
       </div>
-      <button class="close" id="closeDrawer">Close</button>
+      <button id="closeDrawer">x</button>
     </div>
+
     <div class="panelBody">
-      <table>
-        <tbody id="dTable"></tbody>
-      </table>
-      <div class="foot">
-        Tip: this page intentionally avoids “good/bad/open/closed.” It shows raw metrics + a 1–100 score so you can interpret.
-      </div>
+      <table><tbody id="dTable"></tbody></table>
     </div>
   </div>
 </div>
+
 
 <script>
 (function(){
