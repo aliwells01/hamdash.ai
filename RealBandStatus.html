@@ -383,7 +383,7 @@ const solarLabel = document.getElementById("solarLabel");
             card.innerHTML = `
         <div class="top">
             <div class="band">${escapeHtml(r.band ?? "—")}</div>
-            <div class="score">${score ?? "—"}</div>
+            <div class="score">${escapeHtml(r.spotters ?? "—")}</div>
         </div>
 
 
