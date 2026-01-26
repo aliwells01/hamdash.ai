@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Propagation Nowcast (Score 1–100)</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --card:#111826;
+      --card2:#0f1622;
+      --text:#e6edf3;
+      --muted:#9aa4b2;
+      --border:#233044;
+      --accent:#7dd3fc;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #182235 0%, rgba(0,0,0,0) 55%),
+        radial-gradient(1000px 500px at 90% 0%, #1a1635 0%, rgba(0,0,0,0) 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:18px 18px 12px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(17,24,38,0.95), rgba(11,15,20,0.65));
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(8px);
+    }
+    h1{margin:0 0 6px;font-size:18px;font-weight:800;letter-spacing:0.2px}
+    .subrow{
+      display:flex; flex-wrap:wrap;
+      gap:10px 12px; align-items:center;
+      color:var(--muted); font-size:13px;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background: rgba(17,24,38,0.6);
+    }
+    .dot{width:9px;height:9px;border-radius:999px;background:var(--muted)}
+    .dot.ok{background:var(--ok)}
+    .dot.warn{background:var(--warn)}
+    .dot.bad{background:var(--bad)}
+    .btn{
+      cursor:pointer;
+      border:1px solid var(--border);
+      background: rgba(17,24,38,0.75);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:13px;
+    }
+    .btn:hover{filter:brightness(1.06)}
+    .btn:active{transform:translateY(1px)}
+    .wrap{padding:14px 18px 28px;max-width:1200px;margin:0 auto}
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+      margin-top:12px;
+    }
+    .card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(17,24,38,0.92), rgba(15,22,34,0.72));
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      padding:12px 12px 10px;
+      cursor:pointer;
+      transition: filter 0.08s ease, transform 0.08s ease;
+      min-height:140px;
+    }
+    .card:hover{filter:brightness(1.05)}
+    .card:active{transform:translateY(1px)}
+    .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+    .band{font-weight:900;font-size:18px;letter-spacing:0.3px}
+    .score{
+      font-family:var(--mono);
+      font-weight:900;
+      font-size:20px;
+      letter-spacing:0.3px;
+    }
+    .meta{
+      margin-top:6px;
+      display:flex; flex-wrap:wrap;
+      gap:6px 10px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .k{font-family:var(--mono); color:#cbd5e1}
+    .bar{
+      margin-top:10px;
+      height:10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      overflow:hidden;
+    }
+    .fill{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(125,211,252,0.8), rgba(34,197,94,0.85));
+      border-right: 1px solid rgba(255,255,255,0.12);
+    }
+    .note{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+
+    /* Drawer */
+    .drawer{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding:18px;
+      z-index:50;
+    }
+    .drawer.show{display:flex}
+    .panel{
+      width:min(900px, 100%);
+      border:1px solid var(--border);
+      border-radius:18px;
+      background: linear-gradient(180deg, rgba(17,24,38,0.98), rgba(11,15,20,0.92));
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      overflow:hidden;
+    }
+    .panelHead{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+    }
+    .panelTitle{display:flex; align-items:baseline; gap:10px}
+    .panelTitle .band{font-size:20px}
+    .panelTitle .score{font-size:22px}
+    .close{
+      cursor:pointer;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:13px;
+    }
+    .panelBody{padding:12px 14px 14px}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      color:var(--text);
+    }
+    th, td{
+      padding:8px 8px;
+      border-bottom:1px solid rgba(35,48,68,0.65);
+      text-align:left;
+    }
+    th{color:var(--muted); font-weight:700}
+    .small{color:var(--muted); font-size:12px}
+    .warnText{color:var(--warn)}
+    .badText{color:var(--bad)}
+    .okText{color:var(--ok)}
+    .foot{margin-top:10px;color:var(--muted);font-size:12px}
+    .mono{font-family:var(--mono)}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>Propagation Nowcast (POTA-derived score 1–100)</h1>
+  <div class="subrow">
+    <span class="pill"><span class="dot" id="freshDot"></span><span id="freshText">Loading…</span></span>
+    <span class="pill">QTH: <span class="k">Atlanta, GA</span></span>
+    <span class="pill">Endpoint: <span class="k" id="endpointLabel">/api/prop/status</span></span>
+    <button class="btn" id="reloadBtn">Reload</button>
+    <span class="pill">Auto-refresh: <span class="k" id="autoLabel">15s</span></span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid" id="grid"></div>
+  <div class="note" id="note"></div>
+</div>
+
+<!-- Drawer -->
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-label="Band details">
+    <div class="panelHead">
+      <div class="panelTitle">
+        <div class="band" id="dBand">—</div>
+        <div class="score" id="dScore">—</div>
+        <div class="small muted" id="dUpdated">—</div>
+      </div>
+      <button class="close" id="closeDrawer">Close</button>
+    </div>
+    <div class="panelBody">
+      <table>
+        <tbody id="dTable"></tbody>
+      </table>
+      <div class="foot">
+        Tip: this page intentionally avoids “good/bad/open/closed.” It shows raw metrics + a 1–100 score so you can interpret.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ENDPOINT = "https://hamdash-ai.onrender.com/api/prop/status";
+  const AUTO_REFRESH_MS = 15000;
+
+  const grid = document.getElementById("grid");
+  const note = document.getElementById("note");
+  const freshDot = document.getElementById("freshDot");
+  const freshText = document.getElementById("freshText");
+  const endpointLabel = document.getElementById("endpointLabel");
+  const autoLabel = document.getElementById("autoLabel");
+
+  endpointLabel.textContent = ENDPOINT;
+  autoLabel.textContent = (AUTO_REFRESH_MS/1000) + "s";
+
+  const drawer = document.getElementById("drawer");
+  const closeDrawer = document.getElementById("closeDrawer");
+  const dBand = document.getElementById("dBand");
+  const dScore = document.getElementById("dScore");
+  const dUpdated = document.getElementById("dUpdated");
+  const dTable = document.getElementById("dTable");
+
+  closeDrawer.addEventListener("click", () => hideDrawer());
+  drawer.addEventListener("click", (e) => { if(e.target === drawer) hideDrawer(); });
+  document.addEventListener("keydown", (e) => { if(e.key === "Escape") hideDrawer(); });
+
+  document.getElementById("reloadBtn").addEventListener("click", () => load());
+
+  function hideDrawer(){
+    drawer.classList.remove("show");
+    drawer.setAttribute("aria-hidden","true");
+  }
+
+  function showDrawer(row){
+    dBand.textContent = row.band ?? "—";
+    dScore.textContent = (row.score != null) ? Math.round(Number(row.score)) : "—";
+    dUpdated.textContent = row.updated_at_utc ? ("updated: " + row.updated_at_utc) : "updated: —";
+
+    const fields = [
+      ["status", row.status],
+      ["window_minutes", row.window_minutes],
+      ["parks", row.parks],
+      ["edges", row.edges],
+      ["spotters", row.spotters],
+      ["median_km", fmtNum(row.median_km, 1)],
+      ["p75_km", fmtNum(row.p75_km, 1)]
+    ];
+
+    dTable.innerHTML = fields.map(([k,v]) =>
+      `<tr><th class="mono">${escapeHtml(k)}</th><td class="mono">${escapeHtml(v ?? "—")}</td></tr>`
+    ).join("");
+
+    drawer.classList.add("show");
+    drawer.setAttribute("aria-hidden","false");
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  function fmtNum(x, digits){
+    if(x === null || x === undefined) return null;
+    const n = Number(x);
+    if(Number.isNaN(n)) return null;
+    return n.toFixed(digits);
+  }
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+  function scoreToFill(score){
+    const s = clamp(Number(score||0), 0, 100);
+    return s;
+  }
+
+  function setFreshness(ageSec){
+    // ageSec can be null if we can't infer
+    freshDot.className = "dot";
+    if(ageSec == null){
+      freshText.textContent = "Freshness: unknown";
+      return;
+    }
+    const ageMin = ageSec / 60;
+    let cls = "ok", label = `Newest update: ${ageMin.toFixed(1)}m ago`;
+    if(ageMin > 10){ cls = "warn"; }
+    if(ageMin > 30){ cls = "bad"; }
+    freshDot.classList.add(cls);
+    freshText.textContent = label;
+  }
+
+  function parseUpdatedAtUtc(ts){
+    // Best-effort parse for ISO timestamps like "2026-01-26T12:34:56Z"
+    // If your strings are not ISO, this may fail; freshness will fall back to unknown.
+    const d = new Date(ts);
+    if(isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  function computeGlobalFreshness(rows){
+    // Use newest updated_at_utc among rows
+    let newest = null;
+    for(const r of rows){
+      if(!r.updated_at_utc) continue;
+      const d = parseUpdatedAtUtc(r.updated_at_utc);
+      if(!d) continue;
+      if(!newest || d > newest) newest = d;
+    }
+    if(!newest) return null;
+    return Math.max(0, (Date.now() - newest.getTime())/1000);
+  }
+
+  function bandOrderKey(b){
+    const map = {
+      "160m":1,"80m":2,"60m":3,"40m":4,"30m":5,"20m":6,"17m":7,"15m":8,"12m":9,"10m":10,"6m":11,
+      "2m":50,"70cm":60
+    };
+    return map[b] ?? 99;
+  }
+
+  function render(rows){
+    rows = (rows || []).slice().sort((a,b)=>bandOrderKey(a.band)-bandOrderKey(b.band));
+
+    const ageSec = computeGlobalFreshness(rows);
+    setFreshness(ageSec);
+
+    grid.innerHTML = "";
+    for(const r of rows){
+      const score = (r.score != null) ? Math.round(Number(r.score)) : null;
+      const fillPct = scoreToFill(score);
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="top">
+          <div class="band">${escapeHtml(r.band ?? "—")}</div>
+          <div class="score">${score ?? "—"}</div>
+        </div>
+        <div class="meta">
+          <span>parks <span class="k">${escapeHtml(r.parks ?? "—")}</span></span>
+          <span>edges <span class="k">${escapeHtml(r.edges ?? "—")}</span></span>
+          <span>spotters <span class="k">${escapeHtml(r.spotters ?? "—")}</span></span>
+        </div>
+        <div class="bar" title="Score 1–100">
+          <div class="fill" style="width:${fillPct}%"></div>
+        </div>
+        <div class="note">
+          <span class="mono">median_km</span>: <span class="mono">${escapeHtml(fmtNum(r.median_km,1) ?? "—")}</span>
+          &nbsp;•&nbsp;
+          <span class="mono">p75_km</span>: <span class="mono">${escapeHtml(fmtNum(r.p75_km,1) ?? "—")}</span>
+          <br/>
+          <span class="muted mono">updated</span>: <span class="muted mono">${escapeHtml(r.updated_at_utc ?? "—")}</span>
+          ${r.status ? `&nbsp;•&nbsp;<span class="muted mono">status</span>: <span class="muted mono">${escapeHtml(r.status)}</span>` : ``}
+        </div>
+      `;
+      card.addEventListener("click", () => showDrawer(r));
+      grid.appendChild(card);
+    }
+
+    note.textContent = rows.length
+      ? "Showing 1–100 scores per band (POTA-derived). Click any band for raw metrics. If freshness is high (minutes old), your pipeline may be stale."
+      : "No rows returned. Confirm your FastAPI endpoint responds at /api/prop/status and that prop_status_band has data.";
+  }
+
+  async function load(){
+    try{
+      note.textContent = "Loading…";
+      const res = await fetch(ENDPOINT, { cache: "no-store" });
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      // Support either {rows:[...]} or just [...]
+      const rows = Array.isArray(data) ? data : (data.rows || []);
+      render(rows);
+    }catch(err){
+      // Fallback: show mock data so you can test UI layout without backend
+      console.warn("Failed to load endpoint; showing mock data:", err);
+      const mock = [
+        {band:"40m", score:78, status:"FRESH", edges:120, spotters:85, parks:14, median_km:620, p75_km:1100, window_minutes:60, updated_at_utc:new Date().toISOString()},
+        {band:"20m", score:64, status:"FRESH", edges:90,  spotters:70, parks:12, median_km:1400,p75_km:2400, window_minutes:60, updated_at_utc:new Date().toISOString()},
+        {band:"15m", score:41, status:"FRESH", edges:35,  spotters:22, parks:6,  median_km:2100,p75_km:3800, window_minutes:60, updated_at_utc:new Date().toISOString()},
+        {band:"10m", score:18, status:"STALE", edges:5,   spotters:3,  parks:1,  median_km:900, p75_km:1400, window_minutes:60, updated_at_utc:new Date(Date.now()-45*60*1000).toISOString()}
+      ];
+      render(mock);
+      note.textContent = "Backend unreachable; displaying mock data. Start your FastAPI server and ensure /api/prop/status returns JSON rows from prop_status_band.";
+      setFreshness(9999);
+    }
+  }
+
+  load();
+  setInterval(load, AUTO_REFRESH_MS);
+})();
+</script>
+</body>
+</html>
