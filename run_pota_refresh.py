@@ -79,6 +79,8 @@ def fetch_and_store_solar_indices(conn):
 
         conn.commit()
         logger.info(f"[solar] SFI={sfi} A={a_index} K={k_index}")
+        log(f"[solar] inserted ts={ts_utc} sfi={sfi} a={a_index} k={k_index}")
+
 
     except Exception as e:
         logger.warning(f"[solar] failed to fetch solar indices: {e}")
