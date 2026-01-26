@@ -243,7 +243,7 @@ def main():
         cwd=PROJECT_DIR,
     )
 
-        # 5) Compute band-level propagation status
+    # 5) Compute band-level propagation status
     log("Computing band propagation status (prop_status_band)")
     db_url = os.environ["DATABASE_URL"]
     upsert_prop_status_band(db_url)
