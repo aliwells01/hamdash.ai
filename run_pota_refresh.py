@@ -39,6 +39,91 @@ def run_step(args, cwd: Path):
         raise SystemExit(f"Step failed: {' '.join(args)}") from e
 
 
+
+import os
+import psycopg
+from loguru import logger
+
+UPSERT_PROP_STATUS_BAND_SQL = """
+WITH agg AS (
+  SELECT
+    band,
+    MAX(window_minutes) AS window_minutes,
+    SUM(edges)::bigint AS edges,
+    SUM(unique_spotters)::bigint AS spotters,
+    COUNT(DISTINCT park_ref)::bigint AS parks,
+
+    CASE
+      WHEN SUM(edges) > 0 THEN SUM(median_km * edges) / SUM(edges)
+      ELSE AVG(median_km)
+    END AS median_km,
+
+    CASE
+      WHEN SUM(edges) > 0 THEN SUM(p75_km * edges) / SUM(edges)
+      ELSE AVG(p75_km)
+    END AS p75_km,
+
+    CASE
+      WHEN SUM(edges) > 0 THEN SUM(score * edges) / SUM(edges)
+      ELSE AVG(score)
+    END AS score,
+
+    MAX(updated_at_utc) AS updated_at_utc
+  FROM pota_park_status_bandmode_now
+  GROUP BY band
+),
+with_freshness AS (
+  SELECT
+    a.*,
+    (now() AT TIME ZONE 'UTC') - (a.updated_at_utc::timestamptz) AS age_interval
+  FROM agg a
+),
+final AS (
+  SELECT
+    band,
+    window_minutes,
+    edges,
+    spotters,
+    parks,
+    median_km,
+    p75_km,
+    score,
+    CASE
+      WHEN age_interval > interval '10 minutes' THEN 'STALE'
+      ELSE 'FRESH'
+    END AS status,
+    updated_at_utc
+  FROM with_freshness
+)
+
+INSERT INTO prop_status_band (
+  band, window_minutes, edges, spotters, parks, median_km, p75_km, score, status, updated_at_utc
+)
+SELECT
+  band, window_minutes, edges, spotters, parks, median_km, p75_km, score, status, updated_at_utc
+FROM final
+ON CONFLICT (band) DO UPDATE SET
+  window_minutes = EXCLUDED.window_minutes,
+  edges          = EXCLUDED.edges,
+  spotters       = EXCLUDED.spotters,
+  parks          = EXCLUDED.parks,
+  median_km      = EXCLUDED.median_km,
+  p75_km         = EXCLUDED.p75_km,
+  score          = EXCLUDED.score,
+  status         = EXCLUDED.status,
+  updated_at_utc = EXCLUDED.updated_at_utc;
+"""
+
+def upsert_prop_status_band(db_url: str) -> None:
+    with psycopg.connect(db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute(UPSERT_PROP_STATUS_BAND_SQL)
+        conn.commit()
+    logger.info("prop_status_band upsert complete")
+
+
+
+
 # -------------------------
 # Main
 # -------------------------
@@ -109,6 +194,11 @@ def main():
         ],
         cwd=PROJECT_DIR,
     )
+
+        # 5) Compute band-level propagation status
+    log("Computing band propagation status (prop_status_band)")
+    db_url = os.environ["DATABASE_URL"]
+    upsert_prop_status_band(db_url)
 
     log("POTA refresh pipeline complete")
 
