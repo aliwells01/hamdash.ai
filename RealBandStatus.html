@@ -76,15 +76,42 @@
       border-radius:16px;
       background: linear-gradient(180deg, rgba(17,24,38,0.92), rgba(15,22,34,0.72));
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-      padding:12px 12px 10px;
+      padding:8px 10px;
       cursor:pointer;
       transition: filter 0.08s ease, transform 0.08s ease;
-      min-height:60px;
+      min-height:72px;
+        display: flex;
+        align-items: center;
     }
+    /* single-row layout inside card */
+    .cardRow{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 64px 1fr 64px;  /* band | bars | spotters */
+    gap: 10px;
+    align-items: center;
+    }
+
     .card:hover{filter:brightness(1.05)}
     .card:active{transform:translateY(1px)}
     .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-    .band{font-weight:900;font-size:18px;letter-spacing:0.3px}
+    
+    /* band left, same size as before */
+    .band{
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 0.4px;
+    text-align: left;
+    margin: 0;
+    }  
+        /* spotters on right */
+    .spotters{
+    font-family: var(--mono);
+    font-weight: 900;
+    font-size: 18px;
+    text-align: right;
+    }
+
     .score{
       font-family:var(--mono);
       font-weight:900;
@@ -100,8 +127,8 @@
     }
     .k{font-family:var(--mono); color:#cbd5e1}
     .bar{
-      margin-top:10px;
-      height:10px;
+      margin-top:0;
+      height:8px;
       border-radius:999px;
       border:1px solid var(--border);
       background: rgba(0,0,0,0.25);
@@ -120,7 +147,7 @@
       line-height:1.35;
     }
     .bar.small { 
-        height: 7px; margin-top: 6px; opacity: 0.9; 
+        height: 6px; margin-top: 0px; opacity: 0.95; 
     }
 
     .fill.phys { 
@@ -381,21 +408,22 @@ const solarLabel = document.getElementById("solarLabel");
       const card = document.createElement("div");
       card.className = "card";
             card.innerHTML = `
-        <div class="top">
-            <div class="band">${escapeHtml(r.band ?? "—")}</div>
-            <div class="score">${escapeHtml(r.spotters ?? "—")}</div>
-        </div>
+            <div class="cardRow">
+                <div class="band">${escapeHtml(r.band ?? "—")}</div>
 
+                <div class="bars">
+                <div class="bar" title="Reality (POTA activity score 1–100)">
+                    <div class="fill" style="width:${fillPct}%"></div>
+                </div>
 
+                <div class="bar small" title="Physics (solar/geomagnetic heuristic 1–100)">
+                    <div class="fill phys" style="width:${physFill}%"></div>
+                </div>
+                </div>
 
-        <div class="bar" title="Reality (POTA activity score 1–100)">
-            <div class="fill" style="width:${fillPct}%"></div>
-        </div>
-
-        <div class="bar small" title="Physics (solar/geomagnetic heuristic 1–100)">
-            <div class="fill phys" style="width:${physFill}%"></div>
-        </div>
-        `;
+                <div class="spotters" title="Spotters">${escapeHtml(r.spotters ?? "—")}</div>
+            </div>
+            `;
 
       card.addEventListener("click", () => showDrawer(r));
       grid.appendChild(card);
