@@ -23,12 +23,20 @@ from fastapi import HTTPException
 
 from db_paths import spots_db_path
 
+from loguru import logger
 
 app = FastAPI(
     title="HAM Dashboard API",
     description="Backend service for ham-dashboard.html (POTA / SOTA / DX / CAT / QRZ)",
     version="1.0.0"
 )
+
+def pg_connect():
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL not set")
+    return psycopg.connect(url)
+
 
 def get_pota_scores_now():
     conn = sqlite3.connect(spots_db_path())
@@ -229,10 +237,8 @@ def get_active_snapshot():
 # Real Band Status 
 # -----------------------------------------------------------
 
-import os
-import psycopg
-from fastapi import FastAPI
-
+from fastapi import HTTPException
+from loguru import logger
 
 @app.get("/api/prop/status")
 def prop_status():
@@ -256,10 +262,8 @@ def prop_status():
                 return [dict(zip(cols, row)) for row in cur.fetchall()]
     except Exception as e:
         logger.exception("prop_status failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"prop_status failed: {type(e).__name__}: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
 
 
 # -----------------------------------------------------------
