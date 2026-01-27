@@ -157,6 +157,63 @@
         margin-top: 6px; font-size: 11px; 
     }
 
+        .summary{
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      border: 1px solid #233044;
+      border-radius: 14px;
+      background: rgba(17,24,38,0.6);
+      font-size: 14px;
+    }
+    .summary b{ font-weight: 900; }
+.summaryBar{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 14px;
+  border: 1px solid #233044;
+  border-radius: 16px;
+  background: rgba(17,24,38,0.6);
+}
+
+.sumCol{ display:flex; flex-direction:column; gap:6px; }
+.sumTop{ display:flex; align-items:center; justify-content:space-between; }
+.sumLabel{ font-weight: 900; letter-spacing: .4px; }
+
+.sumBig{ font-size: 22px; font-weight: 950; }
+.sumSmall{ font-size: 12px; opacity: .9; }
+.muted{ opacity: .7; }
+
+.infoTip{
+  position: relative;
+  cursor: help;
+  font-size: 14px;
+  opacity: .8;
+  user-select: none;
+}
+
+.tipBox{
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 22px;
+  width: 280px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid #233044;
+  background: #0b1220;
+  font-size: 12px;
+  line-height: 1.25;
+  opacity: 1;
+  z-index: 80;
+}
+
+.infoTip:hover .tipBox,
+.infoTip:focus .tipBox{
+  display: block;
+}
+
 
     /* Drawer */
     .drawer{
@@ -229,6 +286,38 @@
   <button id="reloadBtn"></button>
 </header>
 
+<div class="summaryBar" id="summaryBar">
+  <div class="sumCol">
+    <div class="sumTop">
+      <span class="sumLabel">Model</span>
+      <span class="infoTip" tabindex="0">ⓘ
+        <span class="tipBox">
+          “Model” is a physics-based estimate derived from SFI/Kp/A. It’s a tendency signal, not a guarantee.
+        </span>
+      </span>
+    </div>
+    <div class="sumBig"><span id="modelScore">—</span></div>
+    <div class="bar"><div class="fill phys" id="modelFill" style="width:0%"></div></div>
+    <div class="sumSmall muted" id="solarMini">SFI — • Kp — • A —</div>
+  </div>
+
+  <div class="sumCol">
+    <div class="sumTop">
+      <span class="sumLabel">Real</span>
+      <span class="infoTip" tabindex="0">ⓘ
+        <span class="tipBox">
+          “Real” comes from live POTA activity: parks active, unique spotters, and network edges within the time window.
+        </span>
+      </span>
+    </div>
+    <div class="sumBig"><span id="realScore">—</span></div>
+    <div class="bar"><div class="fill" id="realFill" style="width:0%"></div></div>
+    <div class="sumSmall" id="realMini">—</div>
+  </div>
+</div>
+
+
+
 <div class="wrap">
   <div class="grid" id="grid"></div>
   <div class="note" id="note"></div>
@@ -252,11 +341,19 @@
     <div class="panelBody">
       <table><tbody id="dTable"></tbody></table>
     </div>
+   
+      
+      <span style="font-size:10px;">Spotters: Unique callsigns that reported hearing POTA activators on this band during the current window}</span>
   </div>
 </div>
 
 
 <script>
+
+
+
+
+
 (function(){
   const ENDPOINT = "https://hamdash-ai.onrender.com/api/prop/bands";
 const solarLabel = document.getElementById("solarLabel");
@@ -279,6 +376,15 @@ const solarLabel = document.getElementById("solarLabel");
   const dScore = document.getElementById("dScore");
   const dUpdated = document.getElementById("dUpdated");
   const dTable = document.getElementById("dTable");
+
+
+  const modelScoreEl = document.getElementById("modelScore");
+const realScoreEl  = document.getElementById("realScore");
+const modelFillEl  = document.getElementById("modelFill");
+const realFillEl   = document.getElementById("realFill");
+const solarMiniEl  = document.getElementById("solarMini");
+const realMiniEl   = document.getElementById("realMini");
+
 
   closeDrawer.addEventListener("click", () => hideDrawer());
   drawer.addEventListener("click", (e) => { if(e.target === drawer) hideDrawer(); });
@@ -315,6 +421,112 @@ const solarLabel = document.getElementById("solarLabel");
     drawer.classList.add("show");
     drawer.setAttribute("aria-hidden","false");
   }
+  const summaryEl = document.getElementById("summary");
+
+function labelFromScore(x){
+  if (x == null) return "Unknown";
+  if (x >= 75) return "Strong";
+  if (x >= 55) return "Fair";
+  if (x >= 35) return "Weak";
+  return "Poor";
+}
+
+function updateSummaryBanner(rows, solar){
+  const bands = rows || [];
+  const active = bands.filter(b => Number(b.parks || 0) > 0);
+
+  // Real: weighted average by parks (stable + intuitive)
+  const totalParks = active.reduce((s,b)=> s + Number(b.parks||0), 0);
+  let real = null;
+  if (totalParks > 0){
+    const num = active.reduce((s,b)=> s + Number(b.score||0) * Number(b.parks||0), 0);
+    real = num / totalParks;
+  } else if (bands.length){
+    real = bands.reduce((s,b)=> s + Number(b.score||0), 0) / bands.length;
+  }
+
+  // Model: average physics_score across bands (you already compute per band)
+  const physVals = bands.map(b => Number(b.physics_score)).filter(v => Number.isFinite(v));
+  const model = physVals.length ? (physVals.reduce((a,c)=>a+c,0) / physVals.length) : null;
+
+  // Display + bars
+  const realInt = real != null ? Math.round(real) : null;
+  const modelInt = model != null ? Math.round(model) : null;
+
+  if (realScoreEl)  realScoreEl.textContent  = realInt != null ? realInt : "—";
+  if (modelScoreEl) modelScoreEl.textContent = modelInt != null ? modelInt : "—";
+
+  if (realFillEl)  realFillEl.style.width  = `${scoreToFill(realInt)}%`;
+  if (modelFillEl) modelFillEl.style.width = `${scoreToFill(modelInt)}%`;
+
+  // Mini stats on the right side
+  const totalSpotters = active.reduce((s,b)=> s + Number(b.spotters||0), 0);
+  const activeBands = active.length;
+  const win = bands[0]?.window_minutes ?? "—";
+
+  if (realMiniEl){
+    realMiniEl.textContent = `${totalParks} parks • ${totalSpotters} spotters • ${activeBands} bands • ${win}m window`;
+  }
+
+  // Solar mini line
+  if (solarMiniEl){
+    const sfi = solar?.sfi ?? "—";
+    const kp  = solar?.k_index ?? "—";
+    const a   = solar?.a_index ?? "—";
+    solarMiniEl.textContent = `SFI ${sfi} • Kp ${kp} • A ${a}`;
+  }
+}
+
+
+function computeSummary(rows, solar){
+  const bands = rows || [];
+  const active = bands.filter(b => Number(b.parks || 0) > 0);
+
+  const totalParks = active.reduce((s,b)=> s + Number(b.parks||0), 0);
+  const totalSpotters = active.reduce((s,b)=> s + Number(b.spotters||0), 0);
+  const activeBands = active.length;
+
+  // Reality score: weight by parks (or edges if you prefer)
+  let realityScore = null;
+  if (totalParks > 0){
+    const num = active.reduce((s,b)=> s + Number(b.score||0) * Number(b.parks||0), 0);
+    realityScore = num / totalParks;
+  } else if (bands.length){
+    realityScore = bands.reduce((s,b)=> s + Number(b.score||0), 0) / bands.length;
+  }
+
+  // Physics score: average of physics_score across bands you computed
+  let physicsScore = null;
+  const physVals = bands.map(b => Number(b.physics_score)).filter(v => Number.isFinite(v));
+  if (physVals.length){
+    physicsScore = physVals.reduce((a,c)=>a+c,0) / physVals.length;
+  }
+
+  const r = realityScore != null ? Math.round(realityScore) : null;
+  const p = physicsScore != null ? Math.round(physicsScore) : null;
+
+  const rLabel = labelFromScore(r);
+  const pLabel = labelFromScore(p);
+
+  // Comparison language
+  let compare = "Models and on-air activity broadly agree.";
+  if (r != null && p != null){
+    const d = r - p;
+    if (d >= 20) compare = "Models look worse than what’s actually happening on-air.";
+    else if (d <= -20) compare = "Models look better than current on-air activity suggests.";
+  }
+
+  const sfi = solar?.sfi ?? "—";
+  const kp  = solar?.k_index ?? "—";
+  const a   = solar?.a_index ?? "—";
+
+  return {
+    text: `<b>Model:</b> ${pLabel}${p!=null?` (${p})`:``}  •  <b>Real:</b> ${rLabel}${r!=null?` (${r})`:``}  — ${compare}
+           <br><span class="muted">Activity:</span> ${totalParks} parks, ${totalSpotters} spotters across ${activeBands} bands (window ${bands[0]?.window_minutes ?? "—"}m). 
+           <span class="muted">Solar:</span> SFI ${sfi}, Kp ${kp}, A ${a}.`
+  };
+}
+
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, m => ({
@@ -386,6 +598,9 @@ const solarLabel = document.getElementById("solarLabel");
     const ageSec = computeGlobalFreshness(rows);
     setFreshness(ageSec);
 
+updateSummaryBanner(rows, solar);
+
+
             if (solar && Object.keys(solar).length) {
         const sfi = solar.sfi ?? "—";
         const kp  = solar.k_index ?? "—";
@@ -396,6 +611,12 @@ const solarLabel = document.getElementById("solarLabel");
         solarLabel.textContent = "—";
         }
 
+    
+
+        if (summaryEl){
+          const s = computeSummary(rows, solar);
+          summaryEl.innerHTML = s.text;
+        }
 
     grid.innerHTML = "";
     for(const r of rows){
