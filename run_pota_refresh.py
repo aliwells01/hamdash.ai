@@ -177,21 +177,38 @@ def main():
     ap.add_argument("--qrz-every-min", type=int, default=10)
     ap.add_argument("--freshness-min", type=int, default=10)
     ap.add_argument("--skip-qrz", action="store_true")
+
+    # NEW: optional SOTA ingest into spots_live via HAMserverAPI
+    ap.add_argument("--skip-sota", action="store_true", help="Skip SOTA ingest step")
+    ap.add_argument(
+        "--api-base",
+        default=os.environ.get("HAM_API_BASE", "http://localhost:8000"),
+        help="HAMserverAPI base URL (default: env HAM_API_BASE or http://localhost:8000)",
+    )
+
     args = ap.parse_args()
+
 
     ensure_env()
 
     PROJECT_DIR = Path(__file__).resolve().parent
 
-    # Resolve script paths
     pota_history_py = PROJECT_DIR / "pota_history.py"
     qrz_py          = PROJECT_DIR / "qrz_enrich_spotters.py"
     edges_py        = PROJECT_DIR / "build_pota_edges.py"
     status_py       = PROJECT_DIR / "make_park_status.py"
 
+    # NEW
+    sota_refresh_py = PROJECT_DIR / "run_sota_refresh.py"
+
     for p in (pota_history_py, qrz_py, edges_py, status_py):
         if not p.exists():
             raise SystemExit(f"Missing pipeline script: {p}")
+
+    # NEW: only require SOTA script if we are not skipping it
+    if (not args.skip_sota) and (not sota_refresh_py.exists()):
+        raise SystemExit(f"Missing pipeline script: {sota_refresh_py}")
+
 
     # 1) Fetch POTA history
     log("Fetching POTA spot history")
@@ -203,6 +220,19 @@ def main():
         ],
         cwd=PROJECT_DIR,
     )
+
+        # 1b) Ingest SOTA rows into spots_live (parallel pipeline; does NOT touch POTA APIs)
+    if not args.skip_sota:
+        log("Ingesting SOTA rows into spots_live via HAMserverAPI")
+        run_step(
+            [
+                sys.executable, str(sota_refresh_py),
+                "--active-json", args.active_json,
+                "--api-base", args.api_base,
+            ],
+            cwd=PROJECT_DIR,
+        )
+
 
     # 2) QRZ enrichment (optional / throttled)
     if not args.skip_qrz:
