@@ -488,3 +488,68 @@ async def api_spots_live_bulk(payload: Any = Body(...)):
         print("[api_spots_live_bulk] ERROR:", repr(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+from fastapi import Query, HTTPException
+
+
+@app.get("/api/spots_live")
+def api_spots_live(
+    source: str | None = Query(default=None),
+    limit: int = Query(default=300, ge=1, le=2000),
+):
+    """
+    Fetch recent live spots from spots_live.
+    Optional filter: ?source=SOTA (or POTA, DXS, etc)
+    """
+    try:
+        sql = """
+            SELECT
+                ts_epoch,
+                callsign,
+                freq_hz,
+                mode,
+                program,
+                snr,
+                source,
+                raw
+            FROM spots_live
+        """
+        params = []
+
+        if source:
+            sql += " WHERE source = %s"
+            params.append(source)
+
+        sql += " ORDER BY ts_epoch DESC LIMIT %s"
+        params.append(limit)
+
+        with pg_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+
+        return [
+            {
+                "ts_epoch": float(ts_epoch),
+                "callsign": callsign,
+                "freq_hz": freq_hz,
+                "mode": mode,
+                "program": program,
+                "snr": float(snr),
+                "source": source_val,
+                "raw": raw,
+            }
+            for (
+                ts_epoch,
+                callsign,
+                freq_hz,
+                mode,
+                program,
+                snr,
+                source_val,
+                raw,
+            ) in rows
+        ]
+
+    except Exception as e:
+        print("[api_spots_live] ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
