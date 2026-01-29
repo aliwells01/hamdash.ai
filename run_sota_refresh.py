@@ -33,9 +33,42 @@ import requests
 def load_rows(path: str) -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError(f"Expected a JSON list in {path}, got {type(data)}")
-    return [r for r in data if isinstance(r, dict)]
+
+    # Accept either a list of rows OR a wrapper dict that contains the rows list.
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        # try common wrapper keys
+        for k in ("rows", "spots", "data", "payload", "items"):
+            v = data.get(k)
+            if isinstance(v, list):
+                rows = v
+                break
+        else:
+            # sometimes payload itself wraps another object
+            v = data.get("payload")
+            if isinstance(v, dict):
+                for k in ("rows", "spots", "data", "items"):
+                    vv = v.get(k)
+                    if isinstance(vv, list):
+                        rows = vv
+                        break
+                else:
+                    raise ValueError(
+                        f"Expected a JSON list or wrapper containing a list in {path}. "
+                        f"Top-level keys={list(data.keys())[:20]}"
+                    )
+            else:
+                raise ValueError(
+                    f"Expected a JSON list or wrapper containing a list in {path}. "
+                    f"Top-level keys={list(data.keys())[:20]}"
+                )
+    else:
+        raise ValueError(f"Expected JSON list/dict in {path}, got {type(data)}")
+
+    # keep only dict rows
+    return [r for r in rows if isinstance(r, dict)]
+
 
 
 def sota_payload(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
