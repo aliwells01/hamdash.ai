@@ -207,7 +207,8 @@
 
 <body>
 <div class="top">
-  <strong>POTA Spots</strong>
+  <strong id="title">POTA Spots</strong>
+
   <label>Band:
     <select id="band" class="ctrl">
       <option value="">All</option>
@@ -225,6 +226,13 @@
       <option>FM</option><option>AM</option><option>DIGI</option>
     </select>
   </label>
+  <label>Program:
+  <select id="program" class="ctrl">
+    <option value="POTA" selected>POTA</option>
+    <option value="SOTA">SOTA</option>
+  </select>
+</label>
+
   <label>Sort:
     <select id="sort" class="ctrl">
       <option value="score">Score</option>
@@ -294,20 +302,31 @@ const note = s => s.comments || s.activatorLastComments || s.comment || "";
 const lat  = s => (s.latitude!=null)? Number(s.latitude) : null;
 const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
 const pstate = s => s.locationDesc || "";
+const programSel = document.querySelector("#program");
 
+const API_POTA = "https://api.pota.app/spot/activator";
+const API_SOTA = "https://hamdash-ai.onrender.com/api/spots_live";
+
+const titleEl = document.querySelector("#title");
+programSel.onchange = () => {
+  titleEl.textContent = programSel.value + " Spots";
+  load(true);
+};
 
 
 function scoreBadge(parkRef) {
-  const s = scoreMap[parkRef];
-  if (s == null) return "";
+    if (programSel.value !== "POTA") return "";
+        const s = scoreMap[parkRef];
+        if (s == null) return "";
 
-  const score = Number(s);
-  let cls = "score-low";
-  if (score >= 80) cls = "score-high";
-  else if (score >= 50) cls = "score-med";
+        const score = Number(s);
+        let cls = "score-low";
+        if (score >= 80) cls = "score-high";
+        else if (score >= 50) cls = "score-med";
 
-  return `<span class="score-badge ${cls}" title="POTA score">${score.toFixed(1)}</span>`;
-}
+        return `<span class="score-badge ${cls}" title="POTA score">${score.toFixed(1)}</span>`;
+      }
+    }
 
 
 async function loadScores() {
@@ -594,10 +613,34 @@ async function load(manual=false){
     statusEl.textContent = manual ? "refreshing…" : "loading…";
     const ctl = new AbortController();
     const timer = setTimeout(()=>ctl.abort(), 8000);
-    const r = await fetch(API, {cache:"no-store", signal: ctl.signal});
+    const program = programSel.value;
+
+const url =
+  program === "POTA"
+    ? API_POTA
+    : `${API_SOTA}?source=SOTA`;
+
+const r = await fetch(url, { cache: "no-store", signal: ctl.signal });
+
     clearTimeout(timer);
     if(!r.ok) throw new Error(r.status+" "+r.statusText);
     all = await r.json();
+
+    if (programSel.value === "SOTA") {
+  all = all.map(s => ({
+    call: s.callsign,
+    freq: s.freq_hz,
+    mode: s.mode,
+    comment: s.program,      // summit code
+    src: "SOTA",
+    latitude: s.raw?.lat,
+    longitude: s.raw?.lon,
+    time: s.raw?.time || s.raw?.time_utc,
+    score: s.raw?.score,
+    dist_mi: s.raw?.dist_mi,
+    link: s.raw?.link
+  }));
+}
 
 /* // 🔥 DEBUG: Log first 5 records raw:
 console.log("POTA RAW SPOTS (first 5):", all.slice(0,5));
@@ -677,7 +720,11 @@ items = all.slice()
   const b = toBand(freq(s));
   const fTxt = fmtMHz(freq(s));
   const p = park(s);
-  const parkLink = p ? `https://pota.app/#/park/${encodeURIComponent(p)}` : null;
+  const parkLink =
+  programSel.value === "POTA"
+    ? `https://pota.app/#/park/${encodeURIComponent(p)}`
+    : `https://sotawatch.sota.org.uk/`;
+
   const callLink = call(s) ? `https://www.qrz.com/lookup/${encodeURIComponent(call(s))}` : null;
   const dist = getDistanceMi(s);
   const distTxt = isFinite(dist) ? `${Math.round(dist)} mi` : "";
