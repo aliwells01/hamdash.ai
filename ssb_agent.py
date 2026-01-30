@@ -386,7 +386,7 @@ def fetch_sota(minutes: int = 90) -> List[Spot]:
         mode = (s.get("mode") or "")
         lat = s.get("latitude") or s.get("lat") or 0
         lon = s.get("longitude") or s.get("lon") or 0
-        call = (s.get("callsign") or s.get("activatorCallsign") or "").strip()
+        call = (s.get("activatorCallsign") or s.get("callsign") or "").strip()
         freq = normalize_freq_mhz(s.get("frequency"))
         if not freq: continue
         out.append(Spot("SOTA", call, freq, mode, str(s.get("timeStamp") or s.get("time") or ""),
