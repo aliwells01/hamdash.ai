@@ -5,6 +5,9 @@ on:
     - cron: "*/5 * * * *"   # every 5 minutes
   workflow_dispatch:
 
+env:
+  HAM_API_BASE: https://hamdash-ai.onrender.com
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
