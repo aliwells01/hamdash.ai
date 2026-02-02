@@ -375,7 +375,7 @@ const API_SOTA = "https://hamdash-ai.onrender.com/api/spots_live";
 
 
 function scoreBadge(parkRef) {
-    if (programSel.value !== "POTA") return "";
+    if (currentTab !== "POTA") return "";
         const s = scoreMap[parkRef];
         if (s == null) return "";
 
@@ -435,6 +435,137 @@ function fmtMHz(x){
   if (!isFinite(khz)) return "";
   return (khz/1000).toFixed(3) + " MHz";
 }
+
+function fmtAgeSeconds(sec){
+  if (sec == null || !isFinite(sec)) return "—";
+  const m = Math.floor(sec/60);
+  if (m < 1) return "<1m";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m/60);
+  return `${h}h`;
+}
+
+function bandFromHz(hz){
+  const khz = Number(hz)/1000;
+  if (!isFinite(khz)) return "";
+  if (khz>1800 && khz<2000) return "160m";
+  if (khz>3500 && khz<4000) return "80m";
+  if (khz>5330 && khz<5407) return "60m";
+  if (khz>7000 && khz<7300) return "40m";
+  if (khz>10100 && khz<10150) return "30m";
+  if (khz>14000 && khz<14350) return "20m";
+  if (khz>18068 && khz<18168) return "17m";
+  if (khz>21000 && khz<21450) return "15m";
+  if (khz>24890 && khz<24990) return "12m";
+  if (khz>28000 && khz<29700) return "10m";
+  if (khz>50000 && khz<54000) return "6m";
+  if (khz>144000 && khz<148000) return "2m";
+  return "";
+}
+
+function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
+  // Expect spots from /api/spots_live: {callsign, source, freq_hz, ts_epoch, ...}
+  const newest = Math.max(...spots.map(s => Number(s.ts_epoch) || 0));
+  if (!isFinite(newest) || newest <= 0) return { rows: [], newest: 0 };
+
+  const cutoff = newest - (windowMinutes * 60);
+
+  const byCall = new Map();
+  for (const s of spots){
+    const ts = Number(s.ts_epoch) || 0;
+    if (ts < cutoff) continue;
+
+    const c = (s.callsign || "").toUpperCase().trim();
+    if (!c) continue;
+
+    const src = (s.source || "").trim() || "—";
+    const band = bandFromHz(s.freq_hz);
+
+    let row = byCall.get(c);
+    if (!row){
+      row = {
+        callsign: c,
+        spots: 0,
+        sourcesSet: new Set(),
+        bandsSet: new Set(),
+        lastTs: ts
+      };
+      byCall.set(c, row);
+    }
+
+    row.spots += 1;
+    row.sourcesSet.add(src);
+    if (band) row.bandsSet.add(band);
+    if (ts > row.lastTs) row.lastTs = ts;
+  }
+
+  const rows = Array.from(byCall.values()).map(r=>{
+    const sources = r.sourcesSet.size;
+    const bandsArr = Array.from(r.bandsSet);
+    bandsArr.sort((a,b)=> bandRank(a)-bandRank(b));
+    const bands = bandsArr.join("/").replaceAll("m",""); // "20/17/40"
+    const hot_score = r.spots + 2*sources + r.bandsSet.size;
+    return {
+      callsign: r.callsign,
+      spots: r.spots,
+      sources,
+      bands: bandsArr.length ? bands : "—",
+      last_seen_epoch: r.lastTs,
+      hot_score
+    };
+  });
+
+  rows.sort((a,b)=> (b.hot_score - a.hot_score) || (b.last_seen_epoch - a.last_seen_epoch));
+  return { rows: rows.slice(0, limit), newest };
+}
+
+function renderTopTable(hotRows, newestEpoch, windowMinutes=60){
+  const nowEpoch = Date.now()/1000;
+  const lag = newestEpoch ? Math.max(0, Math.round(nowEpoch - newestEpoch)) : null;
+
+  const header = `
+    <div class="hotWrap">
+      <div class="muted" style="padding:0 0 .35rem 0">
+        Window: last ${windowMinutes}m of ingested data
+        ${lag!=null ? `• ingest lag ~${fmtAgeSeconds(lag)}` : ``}
+      </div>
+      <table class="hotTable">
+        <thead>
+          <tr>
+            <th>Call</th>
+            <th>Bands</th>
+            <th>Spots</th>
+            <th>Src</th>
+            <th>Last</th>
+            <th>Hot</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  const body = (hotRows.length ? hotRows : []).map(r=>{
+    const age = newestEpoch ? Math.max(0, Math.round(newestEpoch - r.last_seen_epoch)) : null;
+    return `
+      <tr>
+        <td class="hotCall">${r.callsign}</td>
+        <td class="mutedCell">${r.bands ?? "—"}</td>
+        <td>${r.spots ?? 0}</td>
+        <td>${r.sources ?? 0}</td>
+        <td class="mutedCell">${age!=null ? fmtAgeSeconds(age) : "—"}</td>
+        <td>${r.hot_score ?? 0}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const footer = `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  list.innerHTML = header + body + footer;
+}
+
 
 
 function relTime(d) {
