@@ -804,34 +804,51 @@ async function load(manual=false){
     statusEl.textContent = manual ? "refreshing…" : "loading…";
     const ctl = new AbortController();
     const timer = setTimeout(()=>ctl.abort(), 8000);
-    const program = programSel.value;
+        const url =
+      (currentTab === "POTA")
+        ? API_POTA
+        : (currentTab === "SOTA")
+          ? `${API_SOTA}?source=SOTA`
+          : API_SOTA; // TOP uses spots_live (all)
 
-const url =
-  program === "POTA"
-    ? API_POTA
-    : `${API_SOTA}?source=SOTA`;
-
-const r = await fetch(url, { cache: "no-store", signal: ctl.signal });
+    const r = await fetch(url, { cache: "no-store", signal: ctl.signal });
 
     clearTimeout(timer);
     if(!r.ok) throw new Error(r.status+" "+r.statusText);
-    all = await r.json();
+        all = await r.json();
 
-    if (programSel.value === "SOTA") {
-  all = all.map(s => ({
-    call: s.callsign,
-    freq: s.freq_hz,
-    mode: s.mode,
-    comment: s.program,      // summit code
-    src: "SOTA",
-    latitude: s.raw?.lat,
-    longitude: s.raw?.lon,
-    time: s.raw?.time || s.raw?.time_utc,
-    score: s.raw?.score,
-    dist_mi: s.raw?.dist_mi,
-    link: s.raw?.link
-  }));
-}
+    if (currentTab === "SOTA") {
+      all = all.map(s => ({
+        call: s.callsign,
+        freq: s.freq_hz,
+        mode: s.mode,
+        comment: s.program,      // summit code
+        src: "SOTA",
+        latitude: s.raw?.lat,
+        longitude: s.raw?.lon,
+        time: s.raw?.time || s.raw?.time_utc,
+        score: s.raw?.score,
+        dist_mi: s.raw?.dist_mi,
+        link: s.raw?.link
+      }));
+      render();
+      statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${all.length} spots`;
+      return;
+    }
+
+    if (currentTab === "TOP") {
+      // all is raw spots_live array here
+      const windowMinutes = 60; // change to 30 if you want “tighter”
+      const { rows, newest } = computeHotCallsFromSpots(all, windowMinutes, 25);
+      renderTopTable(rows, newest, windowMinutes);
+      statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${rows.length} calls`;
+      return;
+    }
+
+    // POTA default
+    render();
+    statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${all.length} spots`;
+
 
 /* // 🔥 DEBUG: Log first 5 records raw:
 console.log("POTA RAW SPOTS (first 5):", all.slice(0,5));
@@ -1279,14 +1296,18 @@ list.addEventListener('change', (e)=>{
 })();
 
 (async function init() {
-  await loadScores();   // 🔥 LOAD SCORES FIRST
-  await load();         // then load POTA spots
+  // Start on POTA tab by default
+  setActiveTab("POTA");
 })();
 
+
 setInterval(async () => {
-  await loadScores();   // refresh scores
-  render();             // re-render so badges + sort update
+  if (currentTab === "POTA") {
+    await loadScores();
+    render();
+  }
 }, 60_000);
+
 
 setInterval(load, 60_000); // existing POTA refresh
 
