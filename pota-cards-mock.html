@@ -931,7 +931,7 @@ items = all.slice()
   const fTxt = fmtMHz(freq(s));
   const p = park(s);
   const parkLink =
-  programSel.value === "POTA"
+  currentTab === "POTA"
     ? `https://pota.app/#/park/${encodeURIComponent(p)}`
     : `https://sotawatch.sota.org.uk/`;
 
