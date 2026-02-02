@@ -500,8 +500,8 @@ function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
         spots: 0,
         sourcesSet: new Set(),
         bandsSet: new Set(),
-        lastTs: ts
-        lastFreqHz: Number(s.freq_hz) || 0
+        lastTs: ts,
+        lastFreqHz: Number(s.freq_hz) || 0,
         last_freq_hz: r.lastFreqHz || 0,
       };
       byCall.set(c, row);
