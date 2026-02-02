@@ -483,37 +483,39 @@ function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
   const cutoff = newest - (windowMinutes * 60);
 
   const byCall = new Map();
-  for (const s of spots){
-    const ts = Number(s.ts_epoch) || 0;
-    if (ts < cutoff) continue;
+  for (const s of spots) {
+  const ts = Number(s.ts_epoch) || 0;
+  if (ts < cutoff) continue;
 
-    const c = (s.callsign || "").toUpperCase().trim();
-    if (!c) continue;
+  const c = (s.callsign || "").toUpperCase().trim();
+  if (!c) continue;
 
-    const src = (s.source || "").trim() || "—";
-    const band = bandFromHz(s.freq_hz);
+  const src = (s.source || "").trim() || "—";
+  const band = bandFromHz(s.freq_hz);
 
-    let row = byCall.get(c);
-    if (!row){
-      row = {
-        callsign: c,
-        spots: 0,
-        sourcesSet: new Set(),
-        bandsSet: new Set(),
-        lastTs: ts,
-        lastFreqHz: Number(s.freq_hz) || 0,
-        last_freq_hz: r.lastFreqHz || 0,
-      };
-      byCall.set(c, row);
-    }
+  let row = byCall.get(c);
+  if (!row) {
+    row = {
+      callsign: c,
+      spots: 0,
+      sourcesSet: new Set(),
+      bandsSet: new Set(),
+      lastTs: ts,
+      lastFreqHz: Number(s.freq_hz) || 0
+    };
+    byCall.set(c, row);
+  }
 
-    row.spots += 1;
-    row.sourcesSet.add(src);
-    if (band) row.bandsSet.add(band);
-    if (ts > row.lastTs) {
-  row.lastTs = ts;
-  row.lastFreqHz = Number(s.freq_hz) || row.lastFreqHz || 0;
+  row.spots += 1;
+  row.sourcesSet.add(src);
+  if (band) row.bandsSet.add(band);
+
+  if (ts > row.lastTs) {
+    row.lastTs = ts;
+    row.lastFreqHz = Number(s.freq_hz) || row.lastFreqHz || 0;
+  }
 }
+
 
   }
 
