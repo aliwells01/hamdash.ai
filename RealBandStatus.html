@@ -597,7 +597,13 @@ function computeSummary(rows, solar){
   }
 
   function render(rows, solar){
-    rows = (rows || []).slice().sort((a,b)=>bandOrderKey(a.band)-bandOrderKey(b.band));
+    rows = (rows || []).slice().sort((a,b)=>{
+  const as = Number(a.score ?? -1);
+  const bs = Number(b.score ?? -1);
+  if (bs !== as) return bs - as;                 // higher score first
+  return bandOrderKey(a.band) - bandOrderKey(b.band); // tie-break by band order
+});
+
 
     const ageSec = computeGlobalFreshness(rows);
     setFreshness(ageSec);
