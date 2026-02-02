@@ -347,6 +347,8 @@ const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
 const pstate = s => s.locationDesc || "";
 const programTabs = document.querySelector("#programTabs");
 let currentTab = "POTA"; // "POTA" | "SOTA" | "TOP"
+let scoreMap = new Map();  // park_ref -> score object
+
 
 function setActiveTab(tab){
   currentTab = tab;
@@ -377,18 +379,38 @@ const API_SOTA = "https://hamdash-ai.onrender.com/api/spots_live";
 
 
 function scoreBadge(parkRef) {
-    if (currentTab !== "POTA") return "";
-        const s = scoreMap[parkRef];
-        if (s == null) return "";
+  // Only show badges on POTA tab
+  if (currentTab !== "POTA") return "";
 
-        const score = Number(s);
-        let cls = "score-low";
-        if (score >= 80) cls = "score-high";
-        else if (score >= 50) cls = "score-med";
+  // scoreMap not ready yet? fail silently
+  if (!scoreMap || typeof scoreMap.get !== "function") return "";
 
-        return `<span class="score-badge ${cls}" title="POTA score">${score.toFixed(1)}</span>`;
-      
+  const s = scoreMap.get(parkRef);
+  if (!s) return "";
+
+  // Expect s to look like:
+  // { score, edges, unique_spotters, unique_states, ... }
+  const score = Number(s.score);
+  if (!isFinite(score) || score <= 0) return "";
+
+  // Optional: tweak thresholds if you want
+  let cls = "badge";
+  if (score >= 80) cls += " badge-hot";
+  else if (score >= 60) cls += " badge-warm";
+
+  const title =
+    `Score: ${score.toFixed(1)}\n` +
+    `Edges: ${s.edges ?? "—"}\n` +
+    `Spotters: ${s.unique_spotters ?? "—"}\n` +
+    `States: ${s.unique_states ?? "—"}`;
+
+  return `
+    <span class="${cls}" title="${title}">
+      ${Math.round(score)}
+    </span>
+  `;
 }
+
 
 
 async function loadScores() {
@@ -1298,9 +1320,11 @@ list.addEventListener('change', (e)=>{
 })();
 
 (async function init() {
-  // Start on POTA tab by default
+  // Make sure scoreMap exists and is populated before first render
+  try { await loadScores(); } catch (e) { console.warn("loadScores failed", e); }
   setActiveTab("POTA");
 })();
+
 
 
 setInterval(async () => {
