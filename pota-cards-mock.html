@@ -329,6 +329,8 @@ const GA_LON = -83.432; // 83°25′54″ W
 
 const $ = s => document.querySelector(s);
 const list = $("#list"), statusEl = $("#status"), errBox = $("#error");
+const titleEl = document.querySelector("#title");
+
 const bandSel = $("#band"), modeSel = $("#mode"), sortSel = $("#sort"), sortSel2 = $("#sort2"), qInput = $("#q"), hideChk = $("#hideHunted");
 $("#refresh").onclick = () => load(true);
 
