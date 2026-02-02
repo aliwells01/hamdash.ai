@@ -378,37 +378,24 @@ const API_SOTA = "https://hamdash-ai.onrender.com/api/spots_live";
 
 
 
-function scoreBadge(parkRef) {
-  // Only show badges on POTA tab
+function function scoreBadge(parkRef) {
+  // Only show scores on the POTA tab
   if (currentTab !== "POTA") return "";
 
-  // scoreMap not ready yet? fail silently
-  if (!scoreMap || typeof scoreMap.get !== "function") return "";
+  // If scores haven't loaded yet, don't break rendering
+  if (!scoreMap || typeof scoreMap !== "object") return "";
 
-  const s = scoreMap.get(parkRef);
-  if (!s) return "";
+  const v = scoreMap[parkRef];
+  if (v == null) return "";
 
-  // Expect s to look like:
-  // { score, edges, unique_spotters, unique_states, ... }
-  const score = Number(s.score);
+  const score = Number(v);
   if (!isFinite(score) || score <= 0) return "";
 
-  // Optional: tweak thresholds if you want
-  let cls = "badge";
-  if (score >= 80) cls += " badge-hot";
-  else if (score >= 60) cls += " badge-warm";
+  let cls = "score-low";
+  if (score >= 80) cls = "score-high";
+  else if (score >= 50) cls = "score-med";
 
-  const title =
-    `Score: ${score.toFixed(1)}\n` +
-    `Edges: ${s.edges ?? "—"}\n` +
-    `Spotters: ${s.unique_spotters ?? "—"}\n` +
-    `States: ${s.unique_states ?? "—"}`;
-
-  return `
-    <span class="${cls}" title="${title}">
-      ${Math.round(score)}
-    </span>
-  `;
+  return `<span class="score-badge ${cls}" title="POTA score">${score.toFixed(1)}</span>`;
 }
 
 
@@ -416,9 +403,10 @@ function scoreBadge(parkRef) {
 async function loadScores() {
   try {
     const r = await fetch(SCORE_URL, { cache: "no-store" });
-    scoreMap = await r.json();
+    scoreMap = await r.json(); // expected: { "US-1234": 85.4, ... }
   } catch (e) {
     console.warn("Score fetch failed", e);
+    scoreMap = {};
   }
 }
 
@@ -1320,10 +1308,10 @@ list.addEventListener('change', (e)=>{
 })();
 
 (async function init() {
-  // Make sure scoreMap exists and is populated before first render
-  try { await loadScores(); } catch (e) { console.warn("loadScores failed", e); }
+  try { await loadScores(); } catch (_) {}
   setActiveTab("POTA");
 })();
+
 
 
 
