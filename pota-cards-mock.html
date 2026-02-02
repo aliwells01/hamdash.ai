@@ -15,6 +15,47 @@
   .top strong{font-weight:600}
   .ctrl{background:#0b0f14;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:.35rem .5rem}
 
+
+    /* --- Tabs (replaces Program dropdown) --- */
+  .tabs{display:flex;gap:.35rem;align-items:center}
+  .tab{
+    background:#0b0f14;
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:999px;
+    padding:.35rem .7rem;
+    cursor:pointer;
+    font-weight:700;
+    font-size:.9rem;
+  }
+  .tab:hover{filter:brightness(1.08)}
+  .tab.active{
+    background:#182231;
+    border-color:#2a3a52;
+  }
+
+  /* --- Top tab table --- */
+  .hotWrap{padding:.4rem .6rem}
+  .hotTable{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .hotTable th,.hotTable td{
+    padding:8px 10px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    white-space:nowrap;
+    text-align:left;
+  }
+  .hotTable th{color:#cbd5e1;font-weight:800;background:#0f141b}
+  .hotCall{font-weight:900}
+  .mutedCell{color:var(--muted)}
+
+
   /* --- LIST LAYOUT (one–two lines per item) --- */
   .list{display:flex;flex-direction:column;gap:0;padding:.2rem}
   .item{display:flex;flex-direction:column;border-bottom:1px solid var(--line);padding:.45rem .6rem;gap:.3rem}
@@ -226,12 +267,12 @@
       <option>FM</option><option>AM</option><option>DIGI</option>
     </select>
   </label>
-  <label>Program:
-  <select id="program" class="ctrl">
-    <option value="POTA" selected>POTA</option>
-    <option value="SOTA">SOTA</option>
-  </select>
-</label>
+  <nav class="tabs" id="programTabs" aria-label="Program tabs">
+    <button class="tab active" data-tab="POTA" type="button">POTA</button>
+    <button class="tab" data-tab="SOTA" type="button">SOTA</button>
+    <button class="tab" data-tab="TOP"  type="button">Top</button>
+  </nav>
+
 
   <label>Sort:
     <select id="sort" class="ctrl">
@@ -302,20 +343,39 @@ const note = s => s.comments || s.activatorLastComments || s.comment || "";
 const lat  = s => (s.latitude!=null)? Number(s.latitude) : null;
 const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
 const pstate = s => s.locationDesc || "";
-const programSel = document.querySelector("#program");
+const programTabs = document.querySelector("#programTabs");
+let currentTab = "POTA"; // "POTA" | "SOTA" | "TOP"
+
+function setActiveTab(tab){
+  currentTab = tab;
+  // Title
+  titleEl.textContent = (tab === "TOP") ? "Top Calls" : `${tab} Spots`;
+
+  // Toggle active class
+  programTabs.querySelectorAll(".tab").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+
+  // When switching away from POTA, we don't need scores
+  if (tab === "POTA") loadScores().catch(()=>{});
+  load(true);
+}
+
+programTabs.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".tab");
+  if (!btn) return;
+  setActiveTab(btn.dataset.tab);
+});
+
 
 const API_POTA = "https://api.pota.app/spot/activator";
 const API_SOTA = "https://hamdash-ai.onrender.com/api/spots_live";
 
-const titleEl = document.querySelector("#title");
-programSel.onchange = () => {
-  titleEl.textContent = programSel.value + " Spots";
-  load(true);
-};
+
 
 
 function scoreBadge(parkRef) {
-    if (programSel.value !== "POTA") return "";
+    if (currentTab !== "POTA") return "";
         const s = scoreMap[parkRef];
         if (s == null) return "";
 
@@ -374,6 +434,135 @@ function fmtMHz(x){
   const khz = toKhz(x);
   if (!isFinite(khz)) return "";
   return (khz/1000).toFixed(3) + " MHz";
+}
+function fmtAgeSeconds(sec){
+  if (sec == null || !isFinite(sec)) return "—";
+  const m = Math.floor(sec/60);
+  if (m < 1) return "<1m";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m/60);
+  return `${h}h`;
+}
+
+function bandFromHz(hz){
+  const khz = Number(hz)/1000;
+  if (!isFinite(khz)) return "";
+  if (khz>1800 && khz<2000) return "160m";
+  if (khz>3500 && khz<4000) return "80m";
+  if (khz>5330 && khz<5407) return "60m";
+  if (khz>7000 && khz<7300) return "40m";
+  if (khz>10100 && khz<10150) return "30m";
+  if (khz>14000 && khz<14350) return "20m";
+  if (khz>18068 && khz<18168) return "17m";
+  if (khz>21000 && khz<21450) return "15m";
+  if (khz>24890 && khz<24990) return "12m";
+  if (khz>28000 && khz<29700) return "10m";
+  if (khz>50000 && khz<54000) return "6m";
+  if (khz>144000 && khz<148000) return "2m";
+  return "";
+}
+
+function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
+  // Expect spots from /api/spots_live: {callsign, source, freq_hz, ts_epoch, ...}
+  const newest = Math.max(...spots.map(s => Number(s.ts_epoch) || 0));
+  if (!isFinite(newest) || newest <= 0) return { rows: [], newest: 0 };
+
+  const cutoff = newest - (windowMinutes * 60);
+
+  const byCall = new Map();
+  for (const s of spots){
+    const ts = Number(s.ts_epoch) || 0;
+    if (ts < cutoff) continue;
+
+    const c = (s.callsign || "").toUpperCase().trim();
+    if (!c) continue;
+
+    const src = (s.source || "").trim() || "—";
+    const band = bandFromHz(s.freq_hz);
+
+    let row = byCall.get(c);
+    if (!row){
+      row = {
+        callsign: c,
+        spots: 0,
+        sourcesSet: new Set(),
+        bandsSet: new Set(),
+        lastTs: ts
+      };
+      byCall.set(c, row);
+    }
+
+    row.spots += 1;
+    row.sourcesSet.add(src);
+    if (band) row.bandsSet.add(band);
+    if (ts > row.lastTs) row.lastTs = ts;
+  }
+
+  const rows = Array.from(byCall.values()).map(r=>{
+    const sources = r.sourcesSet.size;
+    const bandsArr = Array.from(r.bandsSet);
+    bandsArr.sort((a,b)=> bandRank(a)-bandRank(b));
+    const bands = bandsArr.join("/").replaceAll("m",""); // "20/17/40"
+    const hot_score = r.spots + 2*sources + r.bandsSet.size;
+    return {
+      callsign: r.callsign,
+      spots: r.spots,
+      sources,
+      bands: bandsArr.length ? bands : "—",
+      last_seen_epoch: r.lastTs,
+      hot_score
+    };
+  });
+
+  rows.sort((a,b)=> (b.hot_score - a.hot_score) || (b.last_seen_epoch - a.last_seen_epoch));
+  return { rows: rows.slice(0, limit), newest };
+}
+
+function renderTopTable(hotRows, newestEpoch, windowMinutes=60){
+  const nowEpoch = Date.now()/1000;
+  const lag = newestEpoch ? Math.max(0, Math.round(nowEpoch - newestEpoch)) : null;
+
+  const header = `
+    <div class="hotWrap">
+      <div class="muted" style="padding:0 0 .35rem 0">
+        Window: last ${windowMinutes}m of ingested data
+        ${lag!=null ? `• ingest lag ~${fmtAgeSeconds(lag)}` : ``}
+      </div>
+      <table class="hotTable">
+        <thead>
+          <tr>
+            <th>Call</th>
+            <th>Bands</th>
+            <th>Spots</th>
+            <th>Src</th>
+            <th>Last</th>
+            <th>Hot</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  const body = (hotRows.length ? hotRows : []).map(r=>{
+    const age = newestEpoch ? Math.max(0, Math.round(newestEpoch - r.last_seen_epoch)) : null;
+    return `
+      <tr>
+        <td class="hotCall">${r.callsign}</td>
+        <td class="mutedCell">${r.bands ?? "—"}</td>
+        <td>${r.spots ?? 0}</td>
+        <td>${r.sources ?? 0}</td>
+        <td class="mutedCell">${age!=null ? fmtAgeSeconds(age) : "—"}</td>
+        <td>${r.hot_score ?? 0}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const footer = `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  list.innerHTML = header + body + footer;
 }
 
 
@@ -615,32 +804,52 @@ async function load(manual=false){
     const timer = setTimeout(()=>ctl.abort(), 8000);
     const program = programSel.value;
 
-const url =
-  program === "POTA"
-    ? API_POTA
-    : `${API_SOTA}?source=SOTA`;
+    const url =
+      (currentTab === "POTA")
+        ? API_POTA
+        : (currentTab === "SOTA")
+          ? `${API_SOTA}?source=SOTA`
+          : API_SOTA; // TOP uses spots_live (all)
 
-const r = await fetch(url, { cache: "no-store", signal: ctl.signal });
+    const r = await fetch(url, { cache: "no-store", signal: ctl.signal });
+
 
     clearTimeout(timer);
     if(!r.ok) throw new Error(r.status+" "+r.statusText);
-    all = await r.json();
+        all = await r.json();
 
-    if (programSel.value === "SOTA") {
-  all = all.map(s => ({
-    call: s.callsign,
-    freq: s.freq_hz,
-    mode: s.mode,
-    comment: s.program,      // summit code
-    src: "SOTA",
-    latitude: s.raw?.lat,
-    longitude: s.raw?.lon,
-    time: s.raw?.time || s.raw?.time_utc,
-    score: s.raw?.score,
-    dist_mi: s.raw?.dist_mi,
-    link: s.raw?.link
-  }));
-}
+    if (currentTab === "SOTA") {
+      all = all.map(s => ({
+        call: s.callsign,
+        freq: s.freq_hz,
+        mode: s.mode,
+        comment: s.program,      // summit code
+        src: "SOTA",
+        latitude: s.raw?.lat,
+        longitude: s.raw?.lon,
+        time: s.raw?.time || s.raw?.time_utc,
+        score: s.raw?.score,
+        dist_mi: s.raw?.dist_mi,
+        link: s.raw?.link
+      }));
+      render();
+      statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${all.length} spots`;
+      return;
+    }
+
+    if (currentTab === "TOP") {
+      // all is raw spots_live array here
+      const windowMinutes = 60; // change to 30 if you want “tighter”
+      const { rows, newest } = computeHotCallsFromSpots(all, windowMinutes, 25);
+      renderTopTable(rows, newest, windowMinutes);
+      statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${rows.length} calls`;
+      return;
+    }
+
+    // POTA default
+    render();
+    statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${all.length} spots`;
+
 
 /* // 🔥 DEBUG: Log first 5 records raw:
 console.log("POTA RAW SPOTS (first 5):", all.slice(0,5));
@@ -1088,14 +1297,18 @@ list.addEventListener('change', (e)=>{
 })();
 
 (async function init() {
-  await loadScores();   // 🔥 LOAD SCORES FIRST
-  await load();         // then load POTA spots
+  // Start on POTA tab by default
+  setActiveTab("POTA");
 })();
 
+
 setInterval(async () => {
-  await loadScores();   // refresh scores
-  render();             // re-render so badges + sort update
+  if (currentTab === "POTA") {
+    await loadScores();
+    render();
+  }
 }, 60_000);
+
 
 setInterval(load, 60_000); // existing POTA refresh
 
