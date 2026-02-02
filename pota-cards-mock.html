@@ -501,6 +501,7 @@ function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
         sourcesSet: new Set(),
         bandsSet: new Set(),
         lastTs: ts
+        last_freq_hz: r.lastFreqHz || 0,
       };
       byCall.set(c, row);
     }
@@ -508,7 +509,11 @@ function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
     row.spots += 1;
     row.sourcesSet.add(src);
     if (band) row.bandsSet.add(band);
-    if (ts > row.lastTs) row.lastTs = ts;
+    if (ts > row.lastTs) {
+  row.lastTs = ts;
+  row.lastFreqHz = Number(s.freq_hz) || row.lastFreqHz || 0;
+}
+
   }
 
   const rows = Array.from(byCall.values()).map(r=>{
@@ -531,52 +536,83 @@ function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
   return { rows: rows.slice(0, limit), newest };
 }
 
-function renderTopTable(hotRows, newestEpoch, windowMinutes=60){
-  const nowEpoch = Date.now()/1000;
-  const lag = newestEpoch ? Math.max(0, Math.round(nowEpoch - newestEpoch)) : null;
+function hotScoreTag(hotScore){
+  const v = Number(hotScore);
+  if (!isFinite(v) || v <= 0) return "";
 
-  const header = `
-    <div class="hotWrap">
-      <div class="muted" style="padding:0 0 .35rem 0">
-        Window: last ${windowMinutes}m of ingested data
-        ${lag!=null ? `• ingest lag ~${fmtAgeSeconds(lag)}` : ``}
-      </div>
-      <table class="hotTable">
-        <thead>
-          <tr>
-            <th>Call</th>
-            <th>Bands</th>
-            <th>Spots</th>
-            <th>Src</th>
-            <th>Last</th>
-            <th>Hot</th>
-          </tr>
-        </thead>
-        <tbody>
+  // Tune thresholds however you like:
+  // These are intentionally modest since hot_score is small.
+  let cls = "score-low";
+  if (v >= 12) cls = "score-high";
+  else if (v >= 8) cls = "score-mid";
+
+  return `
+    <span class="scoreTag ${cls}" title="Hot score (spots + 2*sources + bands)">
+      <span class="scoreDot"></span>${Math.round(v)}
+    </span>
   `;
-
-  const body = (hotRows.length ? hotRows : []).map(r=>{
-    const age = newestEpoch ? Math.max(0, Math.round(newestEpoch - r.last_seen_epoch)) : null;
-    return `
-      <tr>
-        <td class="hotCall">${r.callsign}</td>
-        <td class="mutedCell">${r.bands ?? "—"}</td>
-        <td>${r.spots ?? 0}</td>
-        <td>${r.sources ?? 0}</td>
-        <td class="mutedCell">${age!=null ? fmtAgeSeconds(age) : "—"}</td>
-        <td>${r.hot_score ?? 0}</td>
-      </tr>
-    `;
-  }).join("");
-
-  const footer = `
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  list.innerHTML = header + body + footer;
 }
+
+function fmtAgeSeconds(sec){
+  if (sec == null || !isFinite(sec)) return "—";
+  const m = Math.floor(sec / 60);
+  if (m < 1) return "<1m";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ago`;
+}
+
+function renderTopItems(hotRows, newestEpoch, windowMinutes=60){
+  const nowEpoch = Date.now()/1000;
+  const lagSec = newestEpoch ? Math.max(0, Math.round(nowEpoch - newestEpoch)) : null;
+  const lagTxt = (lagSec != null) ? fmtAgeSeconds(lagSec) : "—";
+
+  // Reuse your existing list container and item styles
+  list.innerHTML = `
+    <div class="line2" style="padding:.35rem .6rem">
+      Window: last ${windowMinutes}m of ingested data • ingest lag: ${lagTxt}
+    </div>
+  ` + (hotRows.length ? hotRows.map(r => {
+    const call = (r.callsign || "—").toUpperCase();
+    const callLink = call && call !== "—"
+      ? `https://www.qrz.com/lookup/${encodeURIComponent(call)}`
+      : null;
+
+    const lastHz = Number(r.last_freq_hz) || 0;
+    const b = lastHz ? toBand(lastHz) : "";
+    const fTxt = lastHz ? fmtMHz(lastHz) : "";
+
+    const sources = Number(r.sources) || 0;
+    const spots = Number(r.spots) || 0;
+    const bands = r.bands || "—";
+
+    const ageSec = newestEpoch ? Math.max(0, Math.round(newestEpoch - (Number(r.last_seen_epoch) || newestEpoch))) : null;
+    const lastTxt = (ageSec != null) ? fmtAgeSeconds(ageSec) : "—";
+
+    return `
+<article class="item ${b ? bandClass(b) : ""}" role="listitem">
+  <div class="line line1 wrap">
+    <div class="chips truncate">
+      ${callLink
+        ? `<a class="link chipcs" href="${callLink}" target="_blank" rel="noreferrer">${call}</a>`
+        : `<span class="chipcs">${call}</span>`
+      }
+      <span class="chip">${bands}m</span>
+      <span class="chip">${spots} spots</span>
+      <span class="chip">${sources} src</span>
+    </div>
+
+    <div class="right muted">
+      ${hotScoreTag(r.hot_score)}
+      ${fTxt ? `<span class="chipcs">${fTxt}</span>` : ``}
+      <span class="chip">${lastTxt}</span>
+    </div>
+  </div>
+</article>
+`;
+  }).join("") : `<div class="muted" style="padding:.8rem">No recent activity.</div>`);
+}
+
 
 
 
@@ -852,7 +888,8 @@ async function load(manual=false){
       // all is raw spots_live array here
       const windowMinutes = 60; // change to 30 if you want “tighter”
       const { rows, newest } = computeHotCallsFromSpots(all, windowMinutes, 25);
-      renderTopTable(rows, newest, windowMinutes);
+      renderTopItems(rows, newest, windowMinutes);
+
       statusEl.textContent = `updated ${new Date().toLocaleTimeString()} • ${rows.length} calls`;
       return;
     }
