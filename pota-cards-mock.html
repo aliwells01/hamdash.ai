@@ -343,16 +343,35 @@ const note = s => s.comments || s.activatorLastComments || s.comment || "";
 const lat  = s => (s.latitude!=null)? Number(s.latitude) : null;
 const lon  = s => (s.longitude!=null)? Number(s.longitude): null;
 const pstate = s => s.locationDesc || "";
-const programSel = document.querySelector("#program");
+const programTabs = document.querySelector("#programTabs");
+let currentTab = "POTA"; // "POTA" | "SOTA" | "TOP"
+
+function setActiveTab(tab){
+  currentTab = tab;
+  // Title
+  titleEl.textContent = (tab === "TOP") ? "Top Calls" : `${tab} Spots`;
+
+  // Toggle active class
+  programTabs.querySelectorAll(".tab").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+
+  // When switching away from POTA, we don't need scores
+  if (tab === "POTA") loadScores().catch(()=>{});
+  load(true);
+}
+
+programTabs.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".tab");
+  if (!btn) return;
+  setActiveTab(btn.dataset.tab);
+});
+
 
 const API_POTA = "https://api.pota.app/spot/activator";
 const API_SOTA = "https://hamdash-ai.onrender.com/api/spots_live";
 
-const titleEl = document.querySelector("#title");
-programSel.onchange = () => {
-  titleEl.textContent = programSel.value + " Spots";
-  load(true);
-};
+
 
 
 function scoreBadge(parkRef) {
