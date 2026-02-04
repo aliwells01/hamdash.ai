@@ -1281,6 +1281,23 @@ function initTooltipMap(tipEl) {
   }
 }
 
+// Click frequency chip -> tell parent to center spectrum
+list.addEventListener('click', (e) => {
+  const btn = e.target.closest('.spot-freq');
+  if (!btn) return;
+
+  // prevent row click (tooltip open) and checkbox behaviors
+  e.preventDefault();
+  e.stopPropagation();
+
+  const hz = Number(btn.dataset.freqHz);
+  if (!Number.isFinite(hz) || hz <= 0) return;
+
+  window.parent.postMessage({
+    type: 'pota:freq',
+    data: { freq_hz: Math.round(hz) }
+  }, '*');
+});
 
 
 // Click on a row opens tooltip
