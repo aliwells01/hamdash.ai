@@ -517,8 +517,6 @@ function computeHotCallsFromSpots(spots, windowMinutes=60, limit=25){
 }
 
 
-  
-
   const rows = Array.from(byCall.values()).map(r=>{
     const sources = r.sourcesSet.size;
     const bandsArr = Array.from(r.bandsSet);
@@ -1018,7 +1016,15 @@ items = all.slice()
       <div class="right muted">
       
         ${scoreBadge(p)}
-        <span class="chipcs">${fTxt}</span>
+                      <button
+                type="button"
+                class="chipcs spot-freq"
+                data-freq-hz="${Math.round((toKhz(freq(s)) || 0) * 1000)}"
+                title="Click to center spectrum"
+                style="cursor:pointer;border:none;"
+              >
+                ${fTxt}
+              </button>
         <label class="hunt">
           <input type="checkbox" class="huntbox" data-key="${key}" ${huntedByMe ? "checked" : ""}> hunted
         </label>
