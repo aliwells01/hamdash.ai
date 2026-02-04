@@ -1976,6 +1976,28 @@ console.log("🎯 Received pota:hunted message:", msg.data);
     console.warn('Missing callsign/freq in pota:hunted');
     return;
   }
+// Center spectrum when POTA frequency chip is clicked
+if (msg.type === 'pota:freq') {
+  console.log("📡 Received pota:freq message:", msg.data);
+
+  // accept either freq_hz or freq_mhz (so it's robust)
+  const hzFromHz  = Number(msg.data?.freq_hz);
+  const mhz       = Number(msg.data?.freq_mhz);
+  const hzFromMhz = Number.isFinite(mhz) ? Math.round(mhz * 1e6) : NaN;
+
+  const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
+  if (!Number.isFinite(hz) || hz <= 0) {
+    console.warn("pota:freq missing/invalid frequency");
+    return;
+  }
+
+  if (typeof window.setViewCenterHz === 'function') {
+    window.setViewCenterHz(hz);
+  } else {
+    window.centerHz = hz; // fallback
+  }
+  return; // important: don't run hunted logic
+}
 
   const qs = (id) => document.getElementById(id);
   const freq_mhz = String(d.freq_mhz || '');
