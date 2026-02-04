@@ -990,16 +990,19 @@ function resizeSpectrum() {
 
     if (centerEl) centerEl.textContent = HzToMhzStr(hz) + ' MHz';
 
-    // Tune rig
-    try {
-      await fetch(`${API}/rig/tune`, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ freq_hz: hz })
-      });
-    } catch(e){
-      console.warn('rig/tune failed:', e);
+    // Tune rig ONLY if enabled in Settings
+    if (window.HAM?.settings?.mhzClickTunes) {
+      try {
+        await fetch(`${API}/rig/tune`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ freq_hz: hz })
+        });
+      } catch(e){
+        console.warn('rig/tune failed:', e);
+      }
     }
+
 
     drawStaticSpectrum();
   }
@@ -1368,6 +1371,21 @@ spc.stroke();
 
 
 <script>
+      // From POTA freq click: just center the spectrum (and optionally tune, depending on your setting)
+    if (msg.type === 'pota:freq') {
+      const hz = Number(msg.data?.freq_hz);
+      if (!Number.isFinite(hz) || hz <= 0) return;
+
+      // Use your existing exported function from the spectrum module if available
+      if (typeof window.setViewCenterHz === 'function') {
+        window.setViewCenterHz(hz);
+      } else {
+        // fallback: just set centerHz (spectrum module reads window.centerHz)
+        window.centerHz = Math.round(hz);
+      }
+      return;
+    }
+
     (function(){
       const qs = id => document.getElementById(id);
       const fields = ()=>({
@@ -1951,7 +1969,7 @@ document.getElementById('potaPasteSyncBtn').onclick = async () => {
 // Auto-log to QRZ when POTA pane posts a hunted event
 window.addEventListener('message', (e)=>{
   const msg = e.data || {};
-  if (msg.type !== 'pota:hunted') return;
+  if (msg.type !== 'pota:hunted' && msg.type !== 'pota:freq') return;
 console.log("🎯 Received pota:hunted message:", msg.data);
   const d = msg.data || {};
   if (!d.callsign || !d.freq_mhz) {
