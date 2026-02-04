@@ -1964,50 +1964,57 @@ document.getElementById('potaPasteSyncBtn').onclick = async () => {
 })();
 </script>
 
-
 <script>
-// Auto-log to QRZ when POTA pane posts a hunted event
-window.addEventListener('message', (e)=>{
+// Receive messages from pota-cards iframe
+window.addEventListener('message', (e) => {
   const msg = e.data || {};
-  if (msg.type !== 'pota:hunted' && msg.type !== 'pota:freq') return;
-console.log("🎯 Received pota:hunted message:", msg.data);
   const d = msg.data || {};
-  if (!d.callsign || !d.freq_mhz) {
-    console.warn('Missing callsign/freq in pota:hunted');
+
+  // 1) Frequency chip click: center spectrum (and optionally tune, depending on setViewCenterHz)
+  if (msg.type === 'pota:freq') {
+    console.log("📡 Received pota:freq message:", d);
+
+    const hzFromHz  = Number(d.freq_hz);
+    const mhz       = Number(d.freq_mhz);
+    const hzFromMhz = Number.isFinite(mhz) ? Math.round(mhz * 1e6) : NaN;
+
+    const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
+    if (!Number.isFinite(hz) || hz <= 0) {
+      console.warn("pota:freq missing/invalid frequency:", d);
+      return;
+    }
+
+    if (typeof window.setViewCenterHz === 'function') {
+      window.setViewCenterHz(hz);
+    } else {
+      window.centerHz = hz; // fallback if your spectrum reads this
+    }
+    return; // IMPORTANT: do not fall through
+  }
+
+  // 2) Hunted checkbox: autofill logger form
+  if (msg.type !== 'pota:hunted') return;
+
+  console.log("🎯 Received pota:hunted message:", d);
+
+  // accept either freq_mhz or freq_hz so hunted is robust too
+  const callsign = d.callsign || '';
+  const freq_mhz = Number.isFinite(Number(d.freq_mhz))
+    ? String(d.freq_mhz)
+    : (Number.isFinite(Number(d.freq_hz)) ? String(Number(d.freq_hz) / 1e6) : '');
+
+  if (!callsign || !freq_mhz) {
+    console.warn('Missing callsign/freq in pota:hunted:', d);
     return;
   }
-// Center spectrum when POTA frequency chip is clicked
-if (msg.type === 'pota:freq') {
-  console.log("📡 Received pota:freq message:", msg.data);
-
-  // accept either freq_hz or freq_mhz (so it's robust)
-  const hzFromHz  = Number(msg.data?.freq_hz);
-  const mhz       = Number(msg.data?.freq_mhz);
-  const hzFromMhz = Number.isFinite(mhz) ? Math.round(mhz * 1e6) : NaN;
-
-  const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
-  if (!Number.isFinite(hz) || hz <= 0) {
-    console.warn("pota:freq missing/invalid frequency");
-    return;
-  }
-
-  if (typeof window.setViewCenterHz === 'function') {
-    window.setViewCenterHz(hz);
-  } else {
-    window.centerHz = hz; // fallback
-  }
-  return; // important: don't run hunted logic
-}
 
   const qs = (id) => document.getElementById(id);
-  const freq_mhz = String(d.freq_mhz || '');
-  const fHz = parseFloat(freq_mhz) * 1e6;
 
-
-    // 1. Autofill logging form
-  qs('cs').value = d.callsign || '';
+  // Autofill logging form
+  qs('cs').value   = callsign;
   qs('mode').value = (d.mode || '').toUpperCase();
   qs('freq').value = freq_mhz;
+
   // Trigger QRZ search/autocomplete
   setTimeout(() => {
     qs('cs').dispatchEvent(new Event('input', { bubbles: true }));
@@ -2016,7 +2023,7 @@ if (msg.type === 'pota:freq') {
     }
   }, 20);
 
-  // Try to autofill band from freq
+  // Band from freq
   const f = parseFloat(freq_mhz);
   const b =
     f >= 1.8   && f < 2.0   ? "160m" :
@@ -2034,18 +2041,12 @@ if (msg.type === 'pota:freq') {
     f >= 420.0 && f < 450.0 ? "70cm" : "";
   if (b) qs('band').value = b;
 
-  // Optional: set a comment or notes field with park name/code
+  // Notes
   const parkField = qs('notes') || qs('comment') || null;
-  if (parkField && d.park) {
-    parkField.value = `POTA ${d.park}`;
-  }
-
-  // Optional: focus the form panel
-/*   const form = document.getElementById('qsoForm');
-  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' }); */
+  if (parkField && d.park) parkField.value = `POTA ${d.park}`;
 });
-
 </script>
+
 
 
 <script>
