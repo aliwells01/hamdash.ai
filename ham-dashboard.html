@@ -2077,6 +2077,18 @@ document.addEventListener('click', (e) => {
 <!-- Mobile Tab Scroll Logic -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+    const cb = document.getElementById("set_mhz_tunes");
+      if (!cb) return;
+
+      // Default ON unless a saved value explicitly says otherwise
+      const saved = localStorage.getItem("set_mhz_tunes");
+      cb.checked = (saved === null) ? true : (saved === "true");
+
+      cb.addEventListener("change", () => {
+        localStorage.setItem("set_mhz_tunes", String(cb.checked));
+      });
+
+
 
   // Finds nearest scrollable parent
   function getScrollParent(el) {
