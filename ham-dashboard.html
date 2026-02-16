@@ -618,6 +618,9 @@ select {
           <div style="display:flex; gap:10px; align-items:flex-end;">
             <button id="saveBtn" class="btn primary" type="button">Log QSO</button>
             <button id="clearBtn" class="btn" type="button">Clear</button>
+            <button id="btnShutdown" class="btn" type="button" title="Safely power off the Quadra">Power Off</button>
+            <span id="shutdownStatus" style="margin-left:8px;"></span>
+
           </div>
         
       <!-- Session QSO history -->
@@ -763,6 +766,28 @@ function tune(freqHz) {
 
 
 <script>
+
+document.getElementById("btnShutdown")?.addEventListener("click", async () => {
+  if (!confirm("Power off the Quadra now? (Radio control will stop)")) return;
+
+  const status = document.getElementById("shutdownStatus");
+  try {
+    const base = `${location.protocol}//${location.hostname}:8787`;
+    const r = await fetch(`${base}/api/system/shutdown`, { method: "POST" });
+    const j = await r.json().catch(()=>({ok:false}));
+
+    if (j.ok) {
+      if (status) status.textContent = "Shutting down… wait ~10s, then cut battery.";
+    } else {
+      if (status) status.textContent = "Shutdown failed.";
+    }
+  } catch (e) {
+    if (status) status.textContent = "Shutdown request failed.";
+  }
+});
+
+
+
 
 // ===== Config (single source of truth) =====
 // REPLACE WITH YOUR RENDER URL BELOW
