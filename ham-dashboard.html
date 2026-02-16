@@ -1447,211 +1447,7 @@ spc.stroke();
 
 
 
-<script>
-      // From POTA freq click: just center the spectrum (and optionally tune, depending on your setting)
-      if (msg.type === 'pota:freq') {
-        const hzFromHz  = Number(d.freq_hz);
-        const mhz       = Number(d.freq_mhz);
-        const hzFromMhz = Number.isFinite(mhz) ? Math.round(mhz * 1e6) : NaN;
 
-        const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
-        if (!Number.isFinite(hz) || hz <= 0) return;
-
-        window.activateFreq(hz, { source: "pota:freq" });
-        return;
-      }
-
-
-    (function(){
-      const qs = id => document.getElementById(id);
-      const fields = ()=>({
-        callsign: qs('cs').value.trim().toUpperCase(),
-        rst_s: qs('rstS').value.trim(),
-        rst_r: qs('rstR').value.trim(),
-        freq_mhz: qs('freq').value.trim(),
-        band: qs('band').value,
-        mode: qs('mode').value,
-       /*  hunted: qs('hunted').checked, */
-      });
-
-    const bandByFreq = mhz => {
-      const f = parseFloat(mhz);
-      if (isNaN(f)) return "";
-      if (f>=1.8 && f<2.0) return "160m";
-      if (f>=3.5 && f<4.0) return "80m";
-      if (f>=5.0 && f<5.5) return "60m";
-      if (f>=7.0 && f<7.3) return "40m";
-      if (f>=10.1 && f<10.15) return "30m";
-      if (f>=14.0 && f<14.35) return "20m";
-      if (f>=18.068 && f<18.168) return "17m";
-      if (f>=21.0 && f<21.45) return "15m";
-      if (f>=24.89 && f<24.99) return "12m";
-      if (f>=28.0 && f<29.7) return "10m";
-      if (f>=50.0 && f<54.0) return "6m";
-      if (f>=144.0 && f<148.0) return "2m";
-      if (f>=420.0 && f<450.0) return "70cm";
-      return "";
-    };
-    document.getElementById('freq').addEventListener('input', (e)=>{
-      const b = bandByFreq(e.target.value);
-      if (b) document.getElementById('band').value = b;
-    });
-
-
-      // Clear
-      qs('clearBtn').onclick = ()=>{
-        ['cs','rstS','rstR','freq'].forEach(id=>qs(id).value='');
-        qs('band').value = ''; qs('mode').value = ''; qs('hunted').checked = false;
-      };
-
-      const mode = document.getElementById('mode').value || "SSB";
-
-
-// Save → send to QRZ (and skip the placeholder /api/log/local)
-
-qs('saveBtn').onclick = async () => {
-  const f = fields();
-  if (!f.callsign) { alert('Enter callsign'); return; }
-  if (!f.freq_mhz) { alert('Enter frequency (MHz)'); return; }
-
-  // Normalize / prep values
-  const call = String(f.callsign || '').toUpperCase();
-  const freq = String(f.freq_mhz || '');
-  const band = String(f.band || '');
-  const mode = f.mode?.toUpperCase() || 'SSB';
-  const rst_sent = f.rst_s || '59';
-  const rst_rcvd = f.rst_r || '59';
-
-  // Build FormData instead of JSON
-  const form = new FormData();
-  form.append("call", call);
-  form.append("band", band);
-  form.append("mode", mode);
-  form.append("freq", freq);
-  form.append("rst_sent", rst_sent);
-  form.append("rst_rcvd", rst_rcvd);
-
-  // You must already have these two fields in your form:
-  // f.qso_date → YYYY-MM-DD
-  // f.qso_time → HH:MM
-/* if (!f.qso_date) { alert("Missing QSO date."); return; }
-if (!f.qso_time) { alert("Missing QSO time."); return; } */
-
-  console.log("Calling history function...");
-  addQsoToHistoryFromForm();
-
-// Build current UTC date/time for QRZ
-const now = new Date();
-
-// YYYYMMDD
-const qso_date = now.toISOString().slice(0,10).replace(/-/g, "");
-
-// HHMM (UTC)
-const time_on = now.toISOString().slice(11,16).replace(":", "");
-
-// Add to form
-form.append("qso_date", qso_date);
-form.append("time_on", time_on);
-
-
-  // Your station callsign
-  form.append("station_callsign", "W5ALI");
-
-  for (const [k,v] of form.entries()) {
-  console.log("FORM FIELD:", k, v);
-}
-
-  try {
-    const r = await fetch(`${API}/api/qrz/insert`, {
-      method: "POST",
-      body: form   // ← IMPORTANT
-    });
-
-    if (!r.ok) {
-      const msg = await r.text().catch(()=> '');
-      throw new Error(`QRZ insert failed (${r.status}) ${msg}`);
-    }
-  } catch (e) {
-    console.error("QRZ log failed:", e);
-    alert("QRZ log failed (see console).");
-    return;
-  }
-
-  // UI feedback
-  const btn = qs('saveBtn'); 
-  const label = btn.textContent;
-  btn.textContent = "Saved ✓"; btn.disabled = true;
-  setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
-};
-// Simple in-memory session history
-const qsoHistory = [];
-
-// Format UTC time as HH:MMZ
-function currentUtcTime() {
-  return new Date().toISOString().slice(11, 16) + "Z";
-}
-
-function renderQsoHistory() {
-  const listEl = document.getElementById("qsoHistoryList");
-  if (!listEl) return;
-
-  listEl.innerHTML = "";
-
-  qsoHistory.forEach((qso) => {
-    const li = document.createElement("li");
-    li.style.padding = "2px 0";
-
-    li.innerHTML = `
-      <span style="font-weight:600;">${qso.call}</span>
-      <span style="opacity:.75; margin-left:6px;">${qso.time}</span>
-      <span style="opacity:.75; margin-left:10px;">${qso.freq}</span>
-    `;
-    listEl.appendChild(li);
-  });
-}
-
-function addQsoToHistoryFromForm() {
-  const csEl   = document.getElementById("cs");
-  const freqEl = document.getElementById("freq");
-  if (!csEl || !freqEl) return;
-
-  const call = (csEl.value || "").trim().toUpperCase();
-  const freq = (freqEl.value || "").trim();
-
-  if (!call && !freq) return; // nothing useful
-
-  qsoHistory.push({
-    call,
-    freq,
-    time: currentUtcTime(),
-  });
-
-  renderQsoHistory();
-}
-
-// Show/hide + clear wiring
-document.addEventListener("DOMContentLoaded", () => {
-  const showCb   = document.getElementById("showQsoHistory");
-  const boxEl    = document.getElementById("qsoHistoryBox");
-  const clearBtn = document.getElementById("clearQsoHistory");
-
-  if (showCb && boxEl) {
-    showCb.addEventListener("change", (e) => {
-      boxEl.style.display = e.target.checked ? "block" : "none";
-    });
-  }
-
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      qsoHistory.length = 0;
-      renderQsoHistory();
-    });
-  }
-});
-
-
-    })();
-</script>
 <script>
   const QRZ_LOOKUP_ENDPOINT = '/qrz/lookup';
 </script>
@@ -2047,26 +1843,21 @@ window.addEventListener('message', (e) => {
   const d = msg.data || {};
 
   // 1) Frequency chip click: center spectrum (and optionally tune, depending on setViewCenterHz)
-  if (msg.type === 'pota:freq') {
-    console.log("📡 Received pota:freq message:", d);
+if (msg.type === 'pota:freq') {
+  const hzFromHz  = Number(d.freq_hz);
+  const mhz       = Number(d.freq_mhz);
+  const hzFromMhz = Number.isFinite(mhz) ? Math.round(mhz * 1e6) : NaN;
 
-    const hzFromHz  = Number(d.freq_hz);
-    const mhz       = Number(d.freq_mhz);
-    const hzFromMhz = Number.isFinite(mhz) ? Math.round(mhz * 1e6) : NaN;
+  const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
+  if (!Number.isFinite(hz) || hz <= 0) return;
 
-    const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
-    if (!Number.isFinite(hz) || hz <= 0) {
-      console.warn("pota:freq missing/invalid frequency:", d);
-      return;
-    }
-
-    if (typeof window.setViewCenterHz === 'function') {
-      window.setViewCenterHz(hz);
-    } else {
-      window.centerHz = hz; // fallback if your spectrum reads this
-    }
-    return; // IMPORTANT: do not fall through
+  if (typeof window.activateFreq === "function") {
+    window.activateFreq(hz, { source: "pota:freq" });
+  } else {
+    console.warn("activateFreq missing:", window.activateFreq);
   }
+  return;
+}
 
   // 2) Hunted checkbox: autofill logger form
   if (msg.type !== 'pota:hunted') return;
