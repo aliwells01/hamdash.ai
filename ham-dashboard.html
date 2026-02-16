@@ -827,7 +827,7 @@ async function tuneRigHz(hz){
   const res = await fetch(`${RIG_API}/api/rig/tune?hz=${hz}`, { method: "POST" });
   return res.json().catch(()=>({ ok:false, error:"bad json" }));
 }
-
+/* 
 window.activateFreq = async function activateFreq(hz, { source="unknown", tune=null } = {}) {
 
   hz = Math.round(Number(hz));
@@ -860,8 +860,29 @@ window.activateFreq = async function activateFreq(hz, { source="unknown", tune=n
       console.warn(`[CAT] tune error (${source})`, e);
     }
   }
-}
+} */
 
+// --- MUST be global and defined before listeners ---
+window.activateFreq = async function activateFreq(hz, { source="unknown", tune=null } = {}) {
+  hz = Math.round(Number(hz));
+  if (!Number.isFinite(hz) || hz <= 0) return;
+
+  const shouldTune = (tune === null)
+    ? !!window.HAM?.settings?.mhzClickTunes
+    : !!tune;
+
+  // UI updates (no tuning here)
+  if (typeof window.setViewCenterHz === "function") window.setViewCenterHz(hz);
+
+  // Tune via bridge
+  if (shouldTune) {
+    const base = `${location.protocol}//${location.hostname}:8787`;
+    const r = await fetch(`${base}/api/rig/tune?hz=${hz}`, { method: "POST" });
+    const j = await r.json().catch(()=>({ok:false, error:"bad json"}));
+    if (!j.ok) console.warn("CAT tune failed:", j);
+  }
+};
+console.log("activateFreq ready:", typeof window.activateFreq);
 
 
  /*  (function(){ // vertical drag
