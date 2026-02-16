@@ -732,11 +732,11 @@ const API = "https://hamdash-ai.onrender.com";
 // --------------------------------------
 //    Load All Spots → update your UI
 // --------------------------------------
-async function loadAllSpots() {
+/* async function loadAllSpots() {
     const res = await fetch(`${API}/api/spots/all`);
     const spots = await res.json();
     updateWaterfall(spots);
-}
+} */
 
 // Example additional endpoints:
 async function lookupCallsign(cs) {
@@ -754,10 +754,10 @@ function tune(freqHz) {
 // --------------------------------------
 //    Start on load
 // --------------------------------------
-document.addEventListener("DOMContentLoaded", () => {
+/* document.addEventListener("DOMContentLoaded", () => {
     loadAllSpots();
     setInterval(loadAllSpots, 30000);
-});
+}); */
 </script>
 
 
