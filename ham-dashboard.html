@@ -2008,7 +2008,7 @@ document.addEventListener('click', (e) => {
 // ---- Settings state & persistence ----
 (function(){
   const KEY = 'ham3panel-settings-v1';
-  const defaults = { mhzClickTunes: false };
+  const defaults = { mhzClickTunes: true };
 
   function load(){
     try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem(KEY)||'{}')); }
