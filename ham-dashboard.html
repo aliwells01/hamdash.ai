@@ -828,7 +828,8 @@ async function tuneRigHz(hz){
   return res.json().catch(()=>({ ok:false, error:"bad json" }));
 }
 
-async function activateFreq(hz, { source="unknown", tune=null } = {}){
+window.activateFreq = async function activateFreq(hz, { source="unknown", tune=null } = {}) {
+
   hz = Math.round(Number(hz));
   if (!Number.isFinite(hz) || hz <= 0) return;
 
@@ -1240,7 +1241,8 @@ spc.stroke();
     const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
     console.log('🎯 schematic click →', Math.round(fHz));
     setViewCenterHz(fHz);
-    activateFreq(fHz, { source: "spectrum" });
+    window.activateFreq(fHz, { source: "spectrum" });
+
   });
 
   spanInput.addEventListener('input', drawStaticSpectrum);
@@ -1428,7 +1430,7 @@ spc.stroke();
         const hz = Number.isFinite(hzFromHz) ? Math.round(hzFromHz) : hzFromMhz;
         if (!Number.isFinite(hz) || hz <= 0) return;
 
-        activateFreq(hz, { source: "pota:freq" });
+        window.activateFreq(hz, { source: "pota:freq" });
         return;
       }
 
