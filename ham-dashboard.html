@@ -1232,18 +1232,24 @@ spc.stroke();
   SPEC.addEventListener('mouseleave', () => { specTip.textContent = '—'; });
 
   // Click-to-tune from band
-  SPEC.addEventListener('click', ev => {
-    const rect = SPEC.getBoundingClientRect();
-    const x    = ev.clientX - rect.left;
-    const w    = rect.width || 1;
-    const cHz  = getViewCenterHz();
-    const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
-    const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
-    console.log('🎯 schematic click →', Math.round(fHz));
-    setViewCenterHz(fHz);
-    window.activateFreq(fHz, { source: "spectrum" });
+ SPEC.addEventListener('click', ev => {
+  const rect = SPEC.getBoundingClientRect();
+  const x    = ev.clientX - rect.left;
+  const w    = rect.width || 1;
+  const cHz  = getViewCenterHz();
+  const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
+  const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
 
-  });
+  console.log('🎯 schematic click →', Math.round(fHz));
+  setViewCenterHz(fHz);
+
+  if (typeof window.activateFreq === "function") {
+    window.activateFreq(fHz, { source: "spectrum" });
+  } else {
+    console.warn("activateFreq missing:", window.activateFreq);
+  }
+});
+
 
   spanInput.addEventListener('input', drawStaticSpectrum);
   modeSel.addEventListener('change', () => {
