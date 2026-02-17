@@ -179,7 +179,7 @@
   display:block;
   pointer-events:auto;
   background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0));
-  z-index:4;
+  z-index:6;
 }
 
 
@@ -519,6 +519,28 @@ select {
     padding: 0 !important;
     accent-color: #5f78ff;
 }
+.license-overlay{
+  position:absolute;
+  inset:0;
+  pointer-events:none;       /* don’t break click-to-center */
+  z-index:6;                 /* above spectrum/waterfall visuals */
+}
+
+.license-seg{
+  position:absolute;
+  top:0;
+  height:28%;                /* “upper spectrum” guide band */
+  border-radius:6px;
+  opacity:0.18;
+  filter:saturate(1.1);
+}
+
+.license-seg.allowed{
+  background: #2ecc71;       /* green */
+  outline: 1px solid rgba(46,204,113,0.35);
+}
+
+
 
 </style>
 </head>
@@ -527,10 +549,15 @@ select {
 <div class="wrap" id="wrap" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
 
   <!-- TOP: Full-width spectrum (fake) -->
-  <div id="spectrumContainer"   class="pane" style="height:30vh; min-height:200px; padding:10px; position:relative;">
-      <canvas id="specCanvas" width="1200" height="300"></canvas>
-      <div id="specTip">—</div>
-  </div>
+ <div id="spectrumContainer" class="pane"
+     style="height:30vh; min-height:200px; position:relative;">
+
+  <div id="licenseOverlay" class="license-overlay" aria-hidden="true"></div>
+
+  <canvas id="specCanvas" width="1200" height="300"></canvas>
+  <div id="specTip">—</div>
+</div>
+
 
   <!-- BOTTOM: 3-column layout -->
   <div id="threeColRow" style="
@@ -768,23 +795,20 @@ function tune(freqHz) {
 <script>
 
 document.getElementById("btnShutdown")?.addEventListener("click", async () => {
-  if (!confirm("Power off the Quadra now? (Radio control will stop)")) return;
+  const btn = document.getElementById("btnShutdown");
+  btn.disabled = true;
+  btn.textContent = "Shutting down…";
 
-  const status = document.getElementById("shutdownStatus");
   try {
     const base = `${location.protocol}//${location.hostname}:8787`;
-    const r = await fetch(`${base}/api/system/shutdown`, { method: "POST" });
-    const j = await r.json().catch(()=>({ok:false}));
-
-    if (j.ok) {
-      if (status) status.textContent = "Shutting down… wait ~10s, then cut battery.";
-    } else {
-      if (status) status.textContent = "Shutdown failed.";
-    }
+    await fetch(`${base}/api/system/shutdown`, { method: "POST" });
   } catch (e) {
-    if (status) status.textContent = "Shutdown request failed.";
+    console.warn("Shutdown failed", e);
+    btn.disabled = false;
+    btn.textContent = "Power Off Quadra";
   }
 });
+
 
 
 
@@ -1265,6 +1289,109 @@ spc.stroke();
 }
 
 
+// --- General class privilege segments (Hz) ---
+// Based on ARRL US Amateur Radio Bands chart. :contentReference[oaicite:1]{index=1}
+// Notes:
+// - This is "where General may transmit" within each HF band (common use).
+// - 60m is channelized; this overlay uses the channel center windows.
+// - VHF/UHF are generally "all privileges" (band-specific rules still apply).
+
+const GENERAL_SEGMENTS = [
+  // 160m: 1.800–2.000
+  { start: 1.800e6, end: 2.000e6, label: "160m (Gen: all)" },
+
+  // 80m/75m: Gen CW/data 3.525–3.600, Gen phone 3.800–4.000
+  { start: 3.525e6, end: 3.600e6, label: "80m (Gen CW/data)" },
+  { start: 3.800e6, end: 4.000e6, label: "75/80m (Gen phone)" },
+
+  // 60m: channelized (USB + data), 2.8 kHz channels shown on ARRL chart
+  // Centers (MHz): 5.3305, 5.3465, 5.3570, 5.3715, 5.4035
+  ...[5.3305, 5.3465, 5.3570, 5.3715, 5.4035].map(mhz => {
+    const c = mhz * 1e6;
+    return { start: c - 1.4e3, end: c + 1.4e3, label: `60m ch @ ${mhz} MHz (Gen)` };
+  }),
+
+  // 40m: Gen CW/data 7.025–7.125, Gen phone 7.175–7.300
+  { start: 7.025e6, end: 7.125e6, label: "40m (Gen CW/data)" },
+  { start: 7.175e6, end: 7.300e6, label: "40m (Gen phone)" },
+
+  // 30m: 10.100–10.150 (no phone)
+  { start: 10.100e6, end: 10.150e6, label: "30m (Gen CW/data)" },
+
+  // 20m: Gen CW/data 14.025–14.150, Gen phone 14.225–14.350
+  { start: 14.025e6, end: 14.150e6, label: "20m (Gen CW/data)" },
+  { start: 14.225e6, end: 14.350e6, label: "20m (Gen phone)" },
+
+  // 17m: 18.068–18.168
+  { start: 18.068e6, end: 18.168e6, label: "17m (Gen CW/data/phone)" },
+
+  // 15m: Gen CW/data 21.025–21.200, Gen phone 21.275–21.450
+  { start: 21.025e6, end: 21.200e6, label: "15m (Gen CW/data)" },
+  { start: 21.275e6, end: 21.450e6, label: "15m (Gen phone)" },
+
+  // 12m: 24.890–24.990 (phone typically 24.930–24.990)
+  { start: 24.890e6, end: 24.990e6, label: "12m (Gen CW/data/phone)" },
+
+  // 10m: 28.000–29.700 (Gen has broad phone above ~28.300 per chart)
+  { start: 28.000e6, end: 29.700e6, label: "10m (Gen)" },
+
+  // 6m: 50–54 (Gen: all)
+  { start: 50.000e6, end: 54.000e6, label: "6m (Gen: all)" },
+
+  // 2m: 144–148 (Gen: all)
+  { start: 144.000e6, end: 148.000e6, label: "2m (Gen: all)" },
+];
+
+function updateLicenseOverlay() {
+  const overlay = document.getElementById("licenseOverlay");
+  if (!overlay) return;
+
+  const centerHz = Number(getViewCenterHz());
+  const halfSpanHz = Math.max(1e3, Number(spanInput?.value || 48) * 1000);
+
+  if (!Number.isFinite(centerHz) || !Number.isFinite(halfSpanHz)) {
+    overlay.innerHTML = "";
+    return;
+  }
+
+  const minHz = centerHz - halfSpanHz;
+  const maxHz = centerHz + halfSpanHz;
+  const widthHz = maxHz - minHz;
+
+  const visible = GENERAL_SEGMENTS.filter(s => s.end > minHz && s.start < maxHz);
+
+  overlay.innerHTML = visible.map(s => {
+    const leftPct  = ((Math.max(s.start, minHz) - minHz) / widthHz) * 100;
+    const rightPct = ((Math.min(s.end, maxHz)   - minHz) / widthHz) * 100;
+    const wPct = Math.max(0, rightPct - leftPct);
+
+    return `<div class="license-seg allowed"
+                 style="left:${leftPct}%; width:${wPct}%;"
+                 title="${escapeHtml(s.label)}"></div>`;
+  }).join("");
+}
+
+
+// Call this wherever you already react to tuning/zoom changes:
+function hookLicenseOverlayUpdates() {
+  // 1) span control
+  if (window.spanInput) {
+    spanInput.addEventListener("input", updateLicenseOverlay);
+    spanInput.addEventListener("change", updateLicenseOverlay);
+  }
+
+  // 2) if you dispatch a custom event on center changes, hook it here:
+  window.addEventListener("spectrum:viewchange", updateLicenseOverlay);
+
+  
+}
+
+// Start
+hookLicenseOverlayUpdates();
+updateLicenseOverlay();
+
+
+
   // Hover tooltip
   SPEC.addEventListener('mousemove', ev => {
     const rect = SPEC.getBoundingClientRect();
@@ -1301,6 +1428,7 @@ spc.stroke();
   modeSel.addEventListener('change', () => {
     renderSpotList();     // re-filter list
     drawStaticSpectrum();
+     updateLicenseOverlay(); 
   });
 
   // ========= Spots fetch + list =========
