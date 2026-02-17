@@ -529,7 +529,7 @@ select {
 .license-seg{
   position:absolute;
   top:0;
-  height:28%;                /* “upper spectrum” guide band */
+  height:100%;                /* “upper spectrum” guide band */
   border-radius:6px;
   opacity:0.18;
   filter:saturate(1.1);
@@ -1356,15 +1356,15 @@ function updateLicenseOverlay() {
   if (!overlay) return;
 
   const centerHz = Number(getViewCenterHz());
-  const halfSpanHz = Math.max(1e3, Number(spanInput?.value || 48) * 1000);
+  const half     = getHalfSpanHz();
 
-  if (!Number.isFinite(centerHz) || !Number.isFinite(halfSpanHz)) {
+  if (!Number.isFinite(centerHz) || !Number.isFinite(half) || half <= 0) {
     overlay.innerHTML = "";
     return;
   }
 
-  const minHz = centerHz - halfSpanHz;
-  const maxHz = centerHz + halfSpanHz;
+  const minHz = centerHz - half;
+  const maxHz = centerHz + half;
   const widthHz = maxHz - minHz;
 
   const visible = GENERAL_SEGMENTS.filter(s => s.end > minHz && s.start < maxHz);
@@ -1379,6 +1379,7 @@ function updateLicenseOverlay() {
                  title="${s.label}"></div>`;
   }).join("");
 }
+
 
 
 // Call this wherever you already react to tuning/zoom changes:
