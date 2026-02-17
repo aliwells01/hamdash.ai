@@ -1077,6 +1077,14 @@ console.log("activateFreq ready:", typeof window.activateFreq);
     return (hz/1e6).toFixed(5);
   }
 
+function getHalfSpanHz(){
+  // spotsSpanKhz is "half span" in kHz (what your click math assumes)
+  return Math.max(1e3, Number(spanInput?.value || 48) * 1000);
+}
+
+
+
+
   function getModeFilter(){
     return (modeSel?.value || '').toUpperCase();
   }
@@ -1129,13 +1137,15 @@ function resizeSpectrum() {
   window.setViewCenterHz = setViewCenterHz;
   window.getViewCenterHz = getViewCenterHz;
 
+
   function xForFreq(freqHz){
-    const rect = SPEC.getBoundingClientRect();
-    const w    = rect.width || 1;
-    const cHz  = getViewCenterHz();
-    const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
-    return ((freqHz - cHz) / (2*spanHz)) * w + w/2;
-  }
+  const rect = SPEC.getBoundingClientRect();
+  const w    = rect.width || 1;
+  const cHz  = getViewCenterHz();
+  const half = getHalfSpanHz();
+  return ((freqHz - cHz) / (2*half)) * w + w/2;
+}
+
 
   // ========= Static schematic spectrum =========
  
@@ -1167,13 +1177,11 @@ function drawStaticSpectrum(){
   // =====================================================
 //  TICK MARKS ALONG SPECTRUM  (edit tickKHz to adjust)
 // =====================================================
-const tickKHz = 10;   // <-- EDIT THIS (10 = every 10 kHz)
-const spanHz  = (Number(spanInput.value || 48) * 1000 * 2);
+const tickKHz = 10;
+const half    = getHalfSpanHz();
+const leftHz  = getViewCenterHz() - half;
+const rightHz = getViewCenterHz() + half;
 
-const leftHz  = getViewCenterHz() - spanHz/2;
-const rightHz = getViewCenterHz() + spanHz/2;
-
-// find the first tick aligned with tickKHz
 const firstTickHz = Math.ceil(leftHz / (tickKHz * 1000)) * (tickKHz * 1000);
 
 spc.strokeStyle = "#556070";
@@ -1183,8 +1191,9 @@ spc.font        = "10px sans-serif";
 spc.textAlign   = "center";
 spc.textBaseline= "bottom";
 
+
 for (let f = firstTickHz; f <= rightHz; f += tickKHz * 1000) {
-    const x = xForFreq(f);
+  const x = xForFreq(f);
 
     // tiny vertical tick line
     spc.beginPath();
@@ -1398,8 +1407,8 @@ updateLicenseOverlay();
     const x    = ev.clientX - rect.left;
     const w    = rect.width || 1;
     const cHz  = getViewCenterHz();
-    const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
-    const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
+    const half = getHalfSpanHz();
+    const fHz  = cHz - half + (x / w) * (2*half);
     specTip.textContent = HzToMhzStr(fHz);
   });
   SPEC.addEventListener('mouseleave', () => { specTip.textContent = '—'; });
@@ -1410,8 +1419,8 @@ updateLicenseOverlay();
   const x    = ev.clientX - rect.left;
   const w    = rect.width || 1;
   const cHz  = getViewCenterHz();
-  const spanHz = Math.max(1e3, Number(spanInput.value || 48) * 1000);
-  const fHz  = cHz - spanHz + (x / w) * (2*spanHz);
+  const half = getHalfSpanHz();
+  const fHz  = cHz - half + (x / w) * (2*half);
 
   console.log('🎯 schematic click →', Math.round(fHz));
   setViewCenterHz(fHz);
