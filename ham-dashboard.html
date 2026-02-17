@@ -195,14 +195,16 @@
 /* Tooltip and status */
 #specTip{
   position:absolute;
-  top: calc(var(--specH) + 2px);
-  left:8px;
-  background:rgba(0,0,0,.55);
-  color:#eee;
-  padding:3px 6px;
-  border-radius:6px;
-  font:12px system-ui;
-  z-index:5;
+  left:50%;
+  bottom:8px;
+  transform:translateX(-50%);
+  z-index:12;
+  pointer-events:none;
+  padding:4px 8px;
+  border-radius:8px;
+  background:rgba(0,0,0,0.55);
+  color:#dfe7ff;
+  font:12px/1 sans-serif;
 }
 #wfStatus{
   position:absolute;
@@ -1212,7 +1214,7 @@ for (let f = firstTickHz; f <= rightHz; f += tickKHz * 1000) {
 
     // label above band
     const label = (f/1e6).toFixed(3);
-    spc.fillText(label, x, bandTop +10);
+    spc.fillText(label, x, bandTop +15);
 }
 // =====================================================
 //   CENTER TUNING LINE (vertical indicator at centerHz)
