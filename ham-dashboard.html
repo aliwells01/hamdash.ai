@@ -311,7 +311,7 @@
   /* modern browsers: allows tint; remove if you don't want it */
   accent-color: #5f78ff;
 }
-.settings-row label{ margin:0; color:#cfd6e4; font-size:13px; line-height:1.2; }
+.settings-row label{ margin:0; color:#cfd6e4; font-size:12px; line-height:1.2; }
 
 /* --- Logger layout: Callsign on its own top line; QRZ dropdown at right --- */
 #qsoForm *{ box-sizing: border-box; }
@@ -654,10 +654,17 @@ select {
             <div class="grid-item">
               <label>Mode</label>
               <select id="mode" class="fld">
-                <option value="">SSB</option>
-                <option>LSB</option><option>USB</option><option>AM</option><option>FM</option>
-                <option>CW</option><option>FT8</option><option>FT4</option><option>RTTY</option><option>PSK31</option>
-              </select>
+              <option value="SSB">SSB</option>
+              <option value="LSB">LSB</option>
+              <option value="USB">USB</option>
+              <option value="AM">AM</option>
+              <option value="FM">FM</option>
+              <option value="CW">CW</option>
+              <option value="FT8">FT8</option>
+              <option value="FT4">FT4</option>
+              <option value="RTTY">RTTY</option>
+              <option value="PSK31">PSK31</option>
+            </select>
             </div>
           </div>
 
