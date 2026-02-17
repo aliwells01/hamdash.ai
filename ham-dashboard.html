@@ -1353,6 +1353,7 @@ const GENERAL_SEGMENTS = [
 ];
 
 function updateLicenseOverlay() {
+  window.updateLicenseOverlay = updateLicenseOverlay;
   const overlay = document.getElementById("licenseOverlay");
   if (!overlay) return;
 
@@ -1372,7 +1373,7 @@ function updateLicenseOverlay() {
     return `<div class="license-seg" style="left:${leftPct}%; width:${wPct}%;"></div>`;
   }).join("");
 }
-window.updateLicenseOverlay = updateLicenseOverlay;
+
 
 
 
