@@ -1370,7 +1370,21 @@ function updateLicenseOverlay() {
     const leftPct  = ((Math.max(s.start, minHz) - minHz) / widthHz) * 100;
     const rightPct = ((Math.min(s.end, maxHz)   - minHz) / widthHz) * 100;
     const wPct = Math.max(0, rightPct - leftPct);
-    return `<div class="license-seg" style="left:${leftPct}%; width:${wPct}%;"></div>`;
+    /* return `<div class="license-seg" style="left:${leftPct}%; width:${wPct}%;"></div>`; */
+    return `<div
+  style="
+    position:absolute;
+    top:0;
+    left:${leftPct}%;
+    width:${wPct}%;
+    height:100%;
+    background:rgba(46,204,113,0.28);
+    outline:2px solid rgba(46,204,113,0.55);
+    z-index:9999;
+    pointer-events:none;
+  "
+></div>`;
+
   }).join("");
 }
 
