@@ -288,13 +288,13 @@
 .settings-hint{ color:#9aa3b2; font-size:12px; margin-left:28px; }
 
 
-.grid-3col{
+.grid-4col{
   display:grid;
-  grid-template-columns: repeat(3, 1fr); /* always 3 equal columns */
+  grid-template-columns: repeat(4, 1fr); /* always 3 equal columns */
   gap:10px;
 }
 
-.grid-3col .grid-item{
+.grid-4col .grid-item{
   min-width:0;  /* critical for mobile */
 }
 
@@ -627,7 +627,7 @@ select {
           </div>
 
           <!-- Next lines: the rest of the inputs -->
-          <div class="grid-3col">
+          <div class="grid-4col">
             <div class="grid-item">
               <label>RST Sent</label>
               <input id="rstS" class="fld" value="59">
