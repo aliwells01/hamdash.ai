@@ -196,6 +196,7 @@
 #specTip{
   position:absolute;
   left:50%;
+  top:10%;
   bottom:8px;
   transform:translateX(-50%);
   z-index:12;
@@ -689,16 +690,16 @@ select {
         <span>Center: <span id="spotsCenter" style="font-size:20px;  cursor:pointer;" title="Click to copy to logger"></span></span>
        
                           Span: ±<input id="spotsSpanKhz" style="width: 50px;" type="number" value="50"> kHz
-                          <!-- <label> -->
+                          
                             Mode
                             <select id="spotMode" style="width: 70px;">
                               <option value="">All</option>
                               <option value="SSB" selected>SSB</option>
                             </select>
-                          <!-- </label> -->
+                          
            
       </div>
-          
+ </section>          
         
         <div class="snr-badge" id="utcClock" style="font-size:20px; vertical-align: middle;"></div>
         <label>Lat: 33.786165 Lon:-84.3430924 QTH:EM73ts ITU:8 CQ:5</label> 
@@ -721,7 +722,7 @@ select {
             </div>
           </aside>
 
-        </section>
+       
 </div>
 
 
@@ -1079,7 +1080,7 @@ console.log("activateFreq ready:", typeof window.activateFreq);
   // --- State ---
   let rawSpots = [];
   // keep any centerHz already set earlier, otherwise default 14.2 MHz
-  window.centerHz = window.centerHz || 14200000;
+  window.centerHz = window.centerHz || 14285000;
 
   // ========= Helpers =========
   function HzToMhzStr(hz){
