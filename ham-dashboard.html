@@ -543,6 +543,15 @@ select {
   outline: 1px solid rgba(46,204,113,0.35);
 }
 
+.spotsCtrls{
+  display:flex;
+  align-items:flex-end;
+}
+
+.spotsCtrls > *{
+  flex:1;                  /* each child gets equal width */
+  text-align:center;       /* center contents inside each column */
+}
 
 
 </style>
@@ -685,20 +694,30 @@ select {
   </div>
 <section class="pane" id="logger-top" style="flex:1; padding:10px; min-width:0; display:flex; flex-direction:column; overflow:auto;">
         
-      <div class="spotsCtrls" style="display:flex; gap:10px; align-items:flex-end;">
-       
-        <span>Center: <span id="spotsCenter" style="font-size:20px;  cursor:pointer;" title="Click to copy to logger"></span></span>
-       
-                          Span: ±<input id="spotsSpanKhz" style="width: 50px;" type="number" value="50"> kHz
-                          
-                            Mode
-                            <select id="spotMode" style="width: 70px;">
-                              <option value="">All</option>
-                              <option value="SSB" selected>SSB</option>
-                            </select>
-                          
-           
+      <div class="spotsCtrls">
+
+        <div>
+          Center:
+          <span id="spotsCenter"
+                style="font-size:20px; cursor:pointer;"
+                title="Click to copy to logger"></span>
+        </div>
+
+        <div>
+          Span: ±
+          <input id="spotsSpanKhz" style="width:50px;" type="number" value="50"> kHz
+        </div>
+
+        <div>
+          Mode
+          <select id="spotMode" style="width:70px;">
+            <option value="">All</option>
+            <option value="SSB" selected>SSB</option>
+          </select>
+        </div>
+
       </div>
+
           
         
         <div class="snr-badge" id="utcClock" style="font-size:20px; vertical-align: middle;"></div>
