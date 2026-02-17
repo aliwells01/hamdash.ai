@@ -549,14 +549,13 @@ select {
 <div class="wrap" id="wrap" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
 
   <!-- TOP: Full-width spectrum (fake) -->
- <div id="spectrumContainer" class="pane"
-     style="height:30vh; min-height:200px; position:relative;">
-
+<div id="spectrumContainer" class="pane"
+     style="height:30vh; min-height:200px; padding:10px; position:relative;">
   <div id="licenseOverlay" class="license-overlay" aria-hidden="true"></div>
-
   <canvas id="specCanvas" width="1200" height="300"></canvas>
   <div id="specTip">—</div>
 </div>
+
 
 
   <!-- BOTTOM: 3-column layout -->
@@ -1102,6 +1101,7 @@ function resizeSpectrum() {
     spc.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     drawStaticSpectrum();
+updateLicenseOverlay();
 }
 
 
@@ -1283,6 +1283,7 @@ spc.stroke();
     // Draw callsign
     spc.font = '8px sans-serif';
     spc.fillText(cs, x, textY);
+    updateLicenseOverlay();
 
  /*    // Program tag (optional)
     if (s.program) {
@@ -1356,12 +1357,7 @@ function updateLicenseOverlay() {
   if (!overlay) return;
 
   const centerHz = Number(getViewCenterHz());
-  const half     = getHalfSpanHz();
-
-  if (!Number.isFinite(centerHz) || !Number.isFinite(half) || half <= 0) {
-    overlay.innerHTML = "";
-    return;
-  }
+  const half = getHalfSpanHz();
 
   const minHz = centerHz - half;
   const maxHz = centerHz + half;
@@ -1373,12 +1369,11 @@ function updateLicenseOverlay() {
     const leftPct  = ((Math.max(s.start, minHz) - minHz) / widthHz) * 100;
     const rightPct = ((Math.min(s.end, maxHz)   - minHz) / widthHz) * 100;
     const wPct = Math.max(0, rightPct - leftPct);
-
-    return `<div class="license-seg allowed"
-                 style="left:${leftPct}%; width:${wPct}%;"
-                 title="${s.label}"></div>`;
+    return `<div class="license-seg" style="left:${leftPct}%; width:${wPct}%;"></div>`;
   }).join("");
 }
+window.updateLicenseOverlay = updateLicenseOverlay;
+
 
 
 
