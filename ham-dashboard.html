@@ -1207,12 +1207,12 @@ for (let f = firstTickHz; f <= rightHz; f += tickKHz * 1000) {
     // tiny vertical tick line
     spc.beginPath();
     spc.moveTo(x, bandTop);
-    spc.lineTo(x, bandTop +100);
+    spc.lineTo(x, bandTop +10);
     spc.stroke();
 
     // label above band
     const label = (f/1e6).toFixed(3);
-    spc.fillText(label, x, bandTop + 30);
+    spc.fillText(label, x, bandTop );
 }
 // =====================================================
 //   CENTER TUNING LINE (vertical indicator at centerHz)
