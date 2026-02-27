@@ -671,7 +671,7 @@ select {
         <!-- Buttons row (unchanged) -->
         <div class="row">
           <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button id="saveBtn" class="btn primary" type="button">Log QS4</button>
+            <button id="saveBtn" class="btn primary" type="button">Log QS5</button>
             <button id="clearBtn" class="btn" type="button">Clear</button>
             <button id="btnShutdown" class="btn" type="button" title="Safely power off the Quadra">Power Off</button>
             <span id="shutdownStatus" style="margin-left:8px;"></span>
@@ -1776,21 +1776,23 @@ form.append("time_on", time_on);
     return;
   }
 
+window.__hamdashAddQsoToHistory?.({
+  ts: new Date().toISOString(),
+  call: f.callsign,          // from fields()
+  freq_mhz: f.freq_mhz,
+  band: f.band,
+  mode: f.mode,
+  rst_s: f.rst_s,
+  rst_r: f.rst_r,
+});
+
   // UI feedback
   const btn = qs('saveBtn'); 
   const label = btn.textContent;
   btn.textContent = "Saved ✓"; btn.disabled = true;
   setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
 
-    window.__hamdashAddQsoToHistory?.({
-      ts: new Date().toISOString(),
-      call: payload.call || payload.callsign || f.callsign,
-      freq_mhz: f.freq_mhz,
-      band: f.band,
-      mode: f.mode,
-      rst_s: f.rst_s,
-      rst_r: f.rst_r,
-    });
+
 
 };
 
