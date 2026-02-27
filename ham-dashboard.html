@@ -671,7 +671,7 @@ select {
         <!-- Buttons row (unchanged) -->
         <div class="row">
           <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button id="saveBtn" class="btn primary" type="button">Log QS2</button>
+            <button id="saveBtn" class="btn primary" type="button">Log QS3</button>
             <button id="clearBtn" class="btn" type="button">Clear</button>
             <button id="btnShutdown" class="btn" type="button" title="Safely power off the Quadra">Power Off</button>
             <span id="shutdownStatus" style="margin-left:8px;"></span>
@@ -1709,27 +1709,61 @@ updateLicenseOverlay();
         qs('band').value = ''; qs('mode').value = ''; qs('hunted').checked = false;
       };
 
+      const mode = document.getElementById('mode').value || "SSB";
+
+
 // Save → send to QRZ (and skip the placeholder /api/log/local)
+
 qs('saveBtn').onclick = async () => {
   const f = fields();
   if (!f.callsign) { alert('Enter callsign'); return; }
   if (!f.freq_mhz) { alert('Enter frequency (MHz)'); return; }
 
-  // Normalize + build payload the way your QRZ backend expects it
-  const payload = {
-    callsign: String(f.callsign || '').toUpperCase(),
-    freq_mhz: String(f.freq_mhz || ''),  // backend expects MHz as string
-    band: f.band || '',
-    mode: f.mode || '',
-    rst_s: f.rst_s || '59',
-    rst_r: f.rst_r || '59',
-  };
+  // Normalize / prep values
+  const call = String(f.callsign || '').toUpperCase();
+  const freq = String(f.freq_mhz || '');
+  const band = f.band || '';
+  const mode = f.mode?.toUpperCase() || 'SSB';
+  const rst_sent = f.rst_s || '59';
+  const rst_rcvd = f.rst_r || '59';
+
+  // Build FormData instead of JSON
+  const form = new FormData();
+  form.append("call", call);
+  form.append("band", band);
+  form.append("mode", mode);
+  form.append("freq", freq);
+  form.append("rst_sent", rst_sent);
+  form.append("rst_rcvd", rst_rcvd);
+
+  // You must already have these two fields in your form:
+  // f.qso_date → YYYY-MM-DD
+  // f.qso_time → HH:MM
+/* if (!f.qso_date) { alert("Missing QSO date."); return; }
+if (!f.qso_time) { alert("Missing QSO time."); return; } */
+
+
+// Build current UTC date/time for QRZ
+const now = new Date();
+
+// YYYYMMDD
+const qso_date = now.toISOString().slice(0,10).replace(/-/g, "");
+
+// HHMM (UTC)
+const time_on = now.toISOString().slice(11,16).replace(":", "");
+
+// Add to form
+form.append("qso_date", qso_date);
+form.append("time_on", time_on);
+
+
+  // Your station callsign
+  form.append("station_callsign", "W5ALI");
 
   try {
     const r = await fetch(`${API}/api/qrz/insert`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
+      method: "POST",
+      body: form   // ← IMPORTANT
     });
 
     if (!r.ok) {
@@ -1737,17 +1771,17 @@ qs('saveBtn').onclick = async () => {
       throw new Error(`QRZ insert failed (${r.status}) ${msg}`);
     }
   } catch (e) {
-    console.error('QRZ log failed:', e);
-    alert('QRZ log failed. See console for details.');
+    console.error("QRZ log failed:", e);
+    alert("QRZ log failed (see console).");
     return;
   }
 
-  // Small UI touch
-  const btn = qs('saveBtn'); const label = btn.textContent;
-  btn.textContent = 'Saved ✓'; btn.disabled = true;
+  // UI feedback
+  const btn = qs('saveBtn'); 
+  const label = btn.textContent;
+  btn.textContent = "Saved ✓"; btn.disabled = true;
   setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
 };
-
 
 
     })();
