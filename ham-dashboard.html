@@ -1666,7 +1666,92 @@ updateLicenseOverlay();
 })();
 </script>
 
+<script>
+    (function(){
+      const qs = id => document.getElementById(id);
+      const fields = ()=>({
+        callsign: qs('cs').value.trim().toUpperCase(),
+        rst_s: qs('rstS').value.trim(),
+        rst_r: qs('rstR').value.trim(),
+        freq_mhz: qs('freq').value.trim(),
+        band: qs('band').value,
+        mode: qs('mode').value,
+       /*  hunted: qs('hunted').checked, */
+      });
 
+    const bandByFreq = mhz => {
+      const f = parseFloat(mhz);
+      if (isNaN(f)) return "";
+      if (f>=1.8 && f<2.0) return "160m";
+      if (f>=3.5 && f<4.0) return "80m";
+      if (f>=5.0 && f<5.5) return "60m";
+      if (f>=7.0 && f<7.3) return "40m";
+      if (f>=10.1 && f<10.15) return "30m";
+      if (f>=14.0 && f<14.35) return "20m";
+      if (f>=18.068 && f<18.168) return "17m";
+      if (f>=21.0 && f<21.45) return "15m";
+      if (f>=24.89 && f<24.99) return "12m";
+      if (f>=28.0 && f<29.7) return "10m";
+      if (f>=50.0 && f<54.0) return "6m";
+      if (f>=144.0 && f<148.0) return "2m";
+      if (f>=420.0 && f<450.0) return "70cm";
+      return "";
+    };
+    document.getElementById('freq').addEventListener('input', (e)=>{
+      const b = bandByFreq(e.target.value);
+      if (b) document.getElementById('band').value = b;
+    });
+
+
+      // Clear
+      qs('clearBtn').onclick = ()=>{
+        ['cs','rstS','rstR','freq'].forEach(id=>qs(id).value='');
+        qs('band').value = ''; qs('mode').value = ''; qs('hunted').checked = false;
+      };
+
+// Save → send to QRZ (and skip the placeholder /api/log/local)
+qs('saveBtn').onclick = async () => {
+  const f = fields();
+  if (!f.callsign) { alert('Enter callsign'); return; }
+  if (!f.freq_mhz) { alert('Enter frequency (MHz)'); return; }
+
+  // Normalize + build payload the way your QRZ backend expects it
+  const payload = {
+    callsign: String(f.callsign || '').toUpperCase(),
+    freq_mhz: String(f.freq_mhz || ''),  // backend expects MHz as string
+    band: f.band || '',
+    mode: f.mode || '',
+    rst_s: f.rst_s || '59',
+    rst_r: f.rst_r || '59',
+  };
+
+  try {
+    const r = await fetch(`${API}/qrz/insert`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    if (!r.ok) {
+      const msg = await r.text().catch(()=> '');
+      throw new Error(`QRZ insert failed (${r.status}) ${msg}`);
+    }
+  } catch (e) {
+    console.error('QRZ log failed:', e);
+    alert('QRZ log failed. See console for details.');
+    return;
+  }
+
+  // Small UI touch
+  const btn = qs('saveBtn'); const label = btn.textContent;
+  btn.textContent = 'Saved ✓'; btn.disabled = true;
+  setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
+};
+
+
+
+    })();
+</script>
 
 
 <script>
