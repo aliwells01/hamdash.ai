@@ -671,7 +671,7 @@ select {
         <!-- Buttons row (unchanged) -->
         <div class="row">
           <div style="display:flex; gap:10px; align-items:flex-end;">
-            <button id="saveBtn" class="btn primary" type="button">Log QS3</button>
+            <button id="saveBtn" class="btn primary" type="button">Log QS4</button>
             <button id="clearBtn" class="btn" type="button">Clear</button>
             <button id="btnShutdown" class="btn" type="button" title="Safely power off the Quadra">Power Off</button>
             <span id="shutdownStatus" style="margin-left:8px;"></span>
@@ -1781,12 +1781,135 @@ form.append("time_on", time_on);
   const label = btn.textContent;
   btn.textContent = "Saved ✓"; btn.disabled = true;
   setTimeout(()=>{ btn.textContent = label; btn.disabled = false; }, 900);
+
+    window.__hamdashAddQsoToHistory?.({
+      ts: new Date().toISOString(),
+      call: payload.call || payload.callsign || f.callsign,
+      freq_mhz: f.freq_mhz,
+      band: f.band,
+      mode: f.mode,
+      rst_s: f.rst_s,
+      rst_r: f.rst_r,
+    });
+
 };
 
 
     })();
 </script>
+<script>
+(function(){
+  const qs = (id)=>document.getElementById(id);
 
+  // --- QSO HISTORY (session list) -----------------------------------------
+  const HISTORY_KEY = "hamdash:qsoHistory:v1";
+  const MAX_QSOS = 50;
+
+  const historyEls = {
+    wrap: qs("qsoHistoryWrap"),
+    box: qs("qsoHistoryBox"),
+    list: qs("qsoHistoryList"),
+    show: qs("showQsoHistory"),
+    clear: qs("clearQsoHistory"),
+  };
+
+  function loadHistory(){
+    try {
+      const raw = sessionStorage.getItem(HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHistory(arr){
+    try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); } catch {}
+  }
+
+  function fmtWhenUTC(iso){
+    // iso like "2026-02-27T19:31:10.123Z"
+    // show compact: "2026-02-27 19:31Z"
+    try {
+      const d = new Date(iso);
+      const ymd = d.toISOString().slice(0,10);
+      const hm  = d.toISOString().slice(11,16);
+      return `${ymd} ${hm}Z`;
+    } catch {
+      return "";
+    }
+  }
+
+  function renderHistory(){
+    if (!historyEls.list) return;
+    const items = loadHistory();
+
+    historyEls.list.innerHTML = items.map((qso, idx) => {
+      const when = fmtWhenUTC(qso.ts);
+      const call = escapeHtml(qso.call || "—");
+      const freq = escapeHtml(qso.freq_mhz || "—");
+      const band = escapeHtml(qso.band || "—");
+      const mode = escapeHtml(qso.mode || "—");
+      const rstS = escapeHtml(qso.rst_s || "");
+      const rstR = escapeHtml(qso.rst_r || "");
+
+      return `
+        <li style="display:flex; gap:8px; align-items:center; padding:4px 0; border-bottom:1px solid #202637;">
+          <span style="opacity:.75; font-size:12px; min-width:112px;">${when}</span>
+          <span style="font-weight:700; min-width:74px;">${call}</span>
+          <span style="opacity:.9; min-width:78px;">${freq}</span>
+          <span style="opacity:.75; min-width:48px;">${band}</span>
+          <span style="opacity:.75; min-width:44px;">${mode}</span>
+          <span style="opacity:.7; font-size:12px;">${rstS}${rstS||rstR ? "/" : ""}${rstR}</span>
+        </li>
+      `;
+    }).join("");
+
+    applyHistoryVisibility();
+  }
+
+  function applyHistoryVisibility(){
+    if (!historyEls.show || !historyEls.box) return;
+    const on = !!historyEls.show.checked;
+    historyEls.box.style.display = on ? "block" : "none";
+  }
+
+  function pushHistory(qso){
+    const items = loadHistory();
+    items.unshift(qso);
+    if (items.length > MAX_QSOS) items.length = MAX_QSOS;
+    saveHistory(items);
+    renderHistory();
+  }
+
+  function clearHistory(){
+    saveHistory([]);
+    renderHistory();
+  }
+
+  // tiny escape to avoid accidental HTML injection from callsigns/fields
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+
+  // wire UI
+  if (historyEls.show) historyEls.show.addEventListener("change", applyHistoryVisibility);
+  if (historyEls.clear) historyEls.clear.addEventListener("click", clearHistory);
+
+  // initial paint
+  renderHistory();
+
+  // --- HOOK INTO YOUR EXISTING SAVE FLOW ---------------------------------
+  // Call window.__hamdashAddQsoToHistory(qsoObj) AFTER a successful QRZ log.
+  window.__hamdashAddQsoToHistory = (qsoObj) => pushHistory(qsoObj);
+
+})();
+</script>
 
 <script>
   const QRZ_LOOKUP_ENDPOINT = '/qrz/lookup';
